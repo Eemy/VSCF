@@ -19,4 +19,16 @@ Lapack libraries for diagonalization and matrix multiplication, other gauher rou
 
 
 ## IMPORTANT: Linking github to your shell ##
+You will need to add an SSH key to your github account
+1. Type on cmd line: ssh-keygen -t rsa -b 4096 -C "<UNID>@kingspeak.chpc.utah.edu"
+2. Press enter when asked where to save the key and enter a password
+3. Type: eval `ssh-agent -c`
+4. Type: ssh-add
+5. Go to ~/.ssh/id_rsa.pub and copy the file's contents
+6. Go to github >> Settings >> SSH and GPG Keys >> New SSH Key
+7. Title it, then paste contents from .pub file into key box. Then click Create.
 
+- Then to get the VSCF Repository on your shell, go to the repo page, click on the green button that says "Code", go to the "SSH" tab and copy the github URL.
+- Go into your shell, type "git clone <pasted URL from github>"
+- This should automatically upload all the folders and files from the repository.
+- chmod +x all the files and you should be able to execute them! Learn some of the basic git commands so you can also modify the code and easily sync it up to the repository so everyone else can access the changes.
