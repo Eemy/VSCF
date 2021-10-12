@@ -3,6 +3,7 @@
 
 class Mode;
 class EigSolver {
+    int nPoints;
     int nBasis;
     double* T;
     void buildTmat();
