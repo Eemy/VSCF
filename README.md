@@ -22,7 +22,7 @@ Lapack libraries for diagonalization and matrix multiplication, other gauher rou
 You will need to add an SSH key to your github account
 1. Type on cmd line: ssh-keygen -t rsa -b 4096 -C "\<UNID\>@kingspeak.chpc.utah.edu"
 2. Press enter when asked where to save the key and enter a password
-3. Type: eval `ssh-agent -c`
+3. Type: eval \`ssh-agent -c\`
 4. Type: ssh-add
 5. Go to ~/.ssh/id_rsa.pub and copy the file's contents
 6. Go to github >> Settings >> SSH and GPG Keys >> New SSH Key
