@@ -5,9 +5,9 @@
 #include <vector>
 #include <string>
 #include <stdbool.h>
-#include "Mode.h"
-#include "Potential.h"
-#include "EigSolver.h"
+#include "../Modules/Mode.h"
+#include "../Modules/Potential.h"
+#include "../Modules/EigSolver.h"
 
 void readin(double* freq, double* mass, int N);
 void readPot(std::string, double* potential, int length, int potLength);

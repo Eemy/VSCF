@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include "Mode.h"
-#include "ghQuad.h"
+#include "../UtilityFunc/ghQuad.h"
 
 double pi =  3.1415926535897932384626433832795;
 double au_to_wn = 219474.6313708;

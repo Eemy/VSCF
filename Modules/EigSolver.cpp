@@ -3,7 +3,7 @@
 #include <cstdio>
 #include "Mode.h"
 #include "EigSolver.h"
-#include "aux.h"
+#include "../UtilityFunc/aux.h"
 
 void buildTmat();
 
