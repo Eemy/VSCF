@@ -1,0 +1,2 @@
+vscf: vscf.cpp
+	icpc -O3 -std=c++11 -g ../CodeWriting/vscf.cpp ../Modules/Mode.cpp ../Modules/EigSolver.cpp ../UtilityFunc/ghQuad.cpp ../Modules/Potential.cpp ../UtilityFunc/aux.cpp ../Modules/cpot.cpp -o vscf -I${MKLROOT}/include  ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -liomp5 -lpthread -lm -ldl 
