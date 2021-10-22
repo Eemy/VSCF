@@ -14,6 +14,7 @@ void readPot(std::string, double* potential, int length, int potLength);
 bool checkConvergence(Mode** dof, double energy, int nModes);
 int fact(int n);
 void print(FILE* script, std::string line); 
+int lengthCheck(int nMode, int coupling);
 
 double prevEnergy = 0.0;
 
@@ -55,14 +56,12 @@ int main(int argc, char* argv[]) {
       expectedLengths.resize(numMethods);
       potentials.resize(numMethods);
       for(int i=0 ; i<numMethods ; i++) {
-        expectedLengths[i] = fact(nModes)/(fact(nModes-potDims[i])*fact(potDims[i]))
-                          *(int)pow(nPoints,potDims[i]);  
+        expectedLengths[i] = lengthCheck(nModes,potDims[i])*(int) pow(nPoints,potDims[i]);
         potentials[i] = new double[expectedLengths[i]];
         readPot(potFileNames[i],potentials[i],(int) pow(nPoints,potDims[i]),expectedLengths[i]);
       }
     } else { //if just a single method is used
-        expectedLength = fact(nModes)/(fact(nModes-couplingDegree)*fact(couplingDegree))
-                        *(int)pow(nPoints,couplingDegree);
+      expectedLength = lengthCheck(nModes,couplingDegree)*(int)pow(nPoints,couplingDegree);
       V = new double[expectedLength];
       readPot("V.dat",V,(int) pow(nPoints,couplingDegree),expectedLength);
     }

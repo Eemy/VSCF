@@ -85,7 +85,7 @@ double EigSolver::solveMode(Mode* mode, double* pot, int state) {
       printf("\n");
     }
 */
-//    printf("%.8f\n",evalNeeded*219474.6313708);
+    //printf("EigVal:\n%.8f\n",evalNeeded*219474.6313708);
 
     delete[] H;
     delete[] evals;

@@ -162,12 +162,15 @@ int main(int argc, char** argv) {
       if(i != 0) {
         print(script,"fprintf(results,\"Excited-State VSCF Energy is: REPLACE.8f\\n\", energy*219474.6313708);\n");
         print(script,"excitedEnergies[z+1] = energy;\nbreak;\n} else {\n");
+        print(script,"prevEnergy = energy;\n}\n");      
+        print(script,"if(iter == 99) {\nprint(results,\"VSCF failed to converge.\\n\");\nexcitedEnergies[z+1] = energy;\n}");
       } else {
         print(script,"fprintf(results,\"Ground-State VSCF Energy is: REPLACE.8f\\n\", energy*219474.6313708);\n");
         print(script,"excitedEnergies[0] = energy;\nbreak;\n} else {\n");
+        print(script,"prevEnergy = energy;\n}\n");      
+        print(script,"if(iter == 99) {\nprint(results,\"VSCF failed to converge.\\n\");\nexcitedEnergies[0] = energy;\n}");
+
       }
-      print(script,"prevEnergy = energy;\n}\n");      
-      print(script,"if(iter == 99)\nprintf(\"VSCF failed to converge.\\n\");\n");
      
       //Close remaining loops
       print(script,"}\n");

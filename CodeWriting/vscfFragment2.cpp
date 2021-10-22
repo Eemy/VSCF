@@ -98,3 +98,11 @@ int fact(int n) {
 void print(FILE* script, std::string line) {
   fprintf(script,line.c_str());
 }
+
+int lengthCheck(int nMode, int coupling) {
+  int num = nMode;
+  int couplingFac = fact(coupling);
+  for(int i=1; i<coupling ; i++)
+    num *= (nMode-i);
+  return num/couplingFac;
+}

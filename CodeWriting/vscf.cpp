@@ -14,11 +14,12 @@ void readPot(std::string, double* potential, int length, int potLength);
 bool checkConvergence(Mode** dof, double energy, int nModes);
 int fact(int n);
 void print(FILE* script, std::string line); 
+int lengthCheck(int nMode, int coupling);
 
 double prevEnergy = 0.0;
 
 int main(int argc, char* argv[]) {
-  if(argc!=5) printf("Error: <Nmodes> <Nquad> <couplingDegree> <#ofMethodsUsed>\n");
+  if(argc!=6) printf("Error: <Nmodes> <Nquad> <couplingDegree> <#ofMethodsUsed> <damping>\n");
   else {
   //SET-UP
     int nModes = atoi(argv[1]);
@@ -26,6 +27,7 @@ int main(int argc, char* argv[]) {
     int couplingDegree = atoi(argv[3]);
     int iter = 100;
     int numMethods = atoi(argv[4]);    
+    double b = atof(argv[5]);
 
     std::vector<int> potDims;
     std::vector<int> expectedLengths;
@@ -55,14 +57,12 @@ int main(int argc, char* argv[]) {
       expectedLengths.resize(numMethods);
       potentials.resize(numMethods);
       for(int i=0 ; i<numMethods ; i++) {
-        expectedLengths[i] = fact(nModes)/(fact(nModes-potDims[i])*fact(potDims[i]))
-                          *(int)pow(nPoints,potDims[i]);  
+        expectedLengths[i] = lengthCheck(nModes,potDims[i])*(int) pow(nPoints,potDims[i]);
         potentials[i] = new double[expectedLengths[i]];
         readPot(potFileNames[i],potentials[i],(int) pow(nPoints,potDims[i]),expectedLengths[i]);
       }
     } else { //if just a single method is used
-        expectedLength = fact(nModes)/(fact(nModes-couplingDegree)*fact(couplingDegree))
-                        *(int)pow(nPoints,couplingDegree);
+      expectedLength = lengthCheck(nModes,couplingDegree)*(int)pow(nPoints,couplingDegree);
       V = new double[expectedLength];
       readPot("V.dat",V,(int) pow(nPoints,couplingDegree),expectedLength);
     }
@@ -85,6 +85,11 @@ int main(int argc, char* argv[]) {
 //=====================================================================================
 Potential pot(V,1,couplingDegree,nModes,nPoints,expectedLength,dof);
 double** slices = pot.get1DSlices();
+
+double** oldEffV = new double*[nModes];
+for(int i=0 ; i<nModes ; i++) {
+  oldEffV[i] = new double[nPoints];
+}
 
 //Prepare: eigensolver on pure 1D slices for each mode
 for(int i = 0 ; i< nModes ; i++) {
@@ -109,6 +114,24 @@ counter++;
 }
 }
 }
+
+/////Damping convergence:////
+if(iter > 1) {
+  for(int i=0 ; i<nModes ; i++) {
+    for(int j=0 ; j<nPoints ; j++) {
+      double newVal = effV[i][j];
+      effV[i][j] = b*oldEffV[i][j]+(1-b)*newVal; 
+    }
+  }
+}
+
+for(int i=0 ; i<nModes ; i++) {
+  for(int j=0 ; j<nPoints ; j++) {
+    oldEffV[i][j] = effV[i][j];
+  }
+}
+/////////////////////////////
+
 double energy = 0.0;
 for(int i = 0 ; i< nModes ; i++) {
 energy += solver.solveMode(dof[i],effV[i],0);
@@ -122,9 +145,10 @@ break;
 } else {
 prevEnergy = energy;
 }
-if(iter == 99)
-printf("VSCF failed to converge.\n");
-}
+if(iter == 99) {
+print(results,"VSCF failed to converge.\n");
+excitedEnergies[0] = energy;
+}}
 
 
 for(int z = 0 ; z< nModes ; z++) {
@@ -155,6 +179,24 @@ counter++;
 }
 }
 }
+
+/////Damping convergence:////
+if(iter > 1) {
+  for(int i=0 ; i<nModes ; i++) {
+    for(int j=0 ; j<nPoints ; j++) {
+      double newVal = effV[i][j];
+      effV[i][j] = b*oldEffV[i][j]+(1-b)*newVal; 
+    }
+  }
+}
+
+for(int i=0 ; i<nModes ; i++) {
+  for(int j=0 ; j<nPoints ; j++) {
+    oldEffV[i][j] = effV[i][j];
+  }
+}
+/////////////////////////////
+
 double energy = 0.0;
 for(int i = 0 ; i< nModes ; i++) {
 if(i==z) {
@@ -172,9 +214,10 @@ break;
 } else {
 prevEnergy = energy;
 }
-if(iter == 99)
-printf("VSCF failed to converge.\n");
-}
+if(iter == 99) {
+print(results,"VSCF failed to converge.\n");
+excitedEnergies[z+1] = energy;
+}}
 }
 
 
@@ -277,4 +320,12 @@ int fact(int n) {
 
 void print(FILE* script, std::string line) {
   fprintf(script,line.c_str());
+}
+
+int lengthCheck(int nMode, int coupling) {
+  int num = nMode;
+  int couplingFac = fact(coupling);
+  for(int i=1; i<coupling ; i++)
+    num *= (nMode-i);
+  return num/couplingFac;
 }
