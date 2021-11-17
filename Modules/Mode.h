@@ -5,6 +5,7 @@ class Mode {
   public:
     Mode(double, double, int);
     ~Mode();
+    void setGroundState(double*); 
     void updateWaveFcn(double*);
     double* getWaveFcn();
     double computeMaxDiff();
@@ -29,6 +30,8 @@ class Mode {
     double* weights;
     double* hermiteEval;
     double* norm;
+    
+    double* groundState;
 };
 
 #endif

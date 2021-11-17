@@ -45,7 +45,7 @@ class Potential {
         void setUpDriver(std::unordered_map<std::string,int>&);
 
         void getSlice(int, int, int, std::vector<double>&, std::vector<double>&, std::vector<int>&);
-        double getIntegral(int, int, int, int, std::vector<Mode*>&, std::vector<double>&, int*);
+        double getIntegral(int, int, int, int, std::vector<Mode*>&, std::vector<Mode*>&, std::vector<double>&, int*);
         void fillPotential(int, int, std::vector<double>&, std::vector<double>&, int, int*, std::vector<int>&);
         void setUp(int, std::vector<double>&, std::unordered_map<std::string,int>&, std::vector<int>&, std::vector<int>&, std::vector<Mode*>&);
     };

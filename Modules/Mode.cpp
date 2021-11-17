@@ -21,6 +21,7 @@ Mode::Mode(double _omega, double _m, int _nPoints) {
     weights = new double[nPoints];
     hermiteEval = new double[nBasis*nPoints];
     norm = new double[nBasis];
+    groundState = NULL;
 
     //Set up some of the arrays
     gauher(points,weights,nPoints);
@@ -39,9 +40,14 @@ Mode::~Mode() {
   delete[] points;
   delete[] hermiteEval;
   delete[] norm;
+  delete[] groundState;
 }
 
 //===================================================================
+void Mode::setGroundState(double* groundWave) {
+  groundState = groundWave; 
+}
+
 void Mode::updateWaveFcn(double* newWaveFcn) {
   delete[] oldWaveFcn; //deallocate original memory block
   oldWaveFcn = waveFcn; //move pointer to another memory block
@@ -73,10 +79,8 @@ double Mode::getPoint(int index) {return points[index];}
 double Mode::getIntegralComponent(int point) {
   double integralComponent = 0.0;
   for(int i=0 ; i<nBasis ; i++) {
-//    printf("InfoUsed: %.8f %.8f %.8f\n",hermiteEval[i*nBasis+point],norm[i],waveFcn[i]);
     integralComponent += hermiteEval[i*nPoints+point]*norm[i]*waveFcn[i];
   }
-  double finalIntegralComponent = integralComponent*integralComponent;
-  finalIntegralComponent *= weights[point];//deleted sqrt(alpha);
-  return finalIntegralComponent;
+  integralComponent *= weights[point];//deleted sqrt(alpha);
+  return integralComponent;
 }

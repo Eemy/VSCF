@@ -175,7 +175,7 @@ double Potential::Tuplet::getEffVIntegral(int modeSelection, int modeSlice) {
       modesNeeded.push_back(modeSubset[i]);
   }
   getSlice(dim, modeSelection, modeSlice, pot, tupletSlice, subspaces);
-  integralValue += getIntegral(0, tupletSlice.size(), dim-1, dim-1, modesNeeded, tupletSlice, weightMarkers);
+  integralValue += getIntegral(0, tupletSlice.size(), dim-1, dim-1, modesNeeded, modesNeeded, tupletSlice, weightMarkers);
 
   //include condition for 2mode VSCF
   if(dim > 2) {
@@ -200,7 +200,7 @@ double Potential::Tuplet::getEffVIntegral(int modeSelection, int modeSlice) {
               modesInvolved.push_back(subTuplets[i][j]->modeSet[k]);
           }
           getSlice(i+2, indexOfMode, modeSlice, subTuplets[i][j]->potSet, sliceNeeded, subTuplets[i][j]->subspaceSet);
-          integralValue += getIntegral(0,(int)pow(nPoints,i+1),i+1,i+1, modesInvolved, sliceNeeded, weightMarkers2);  
+          integralValue += getIntegral(0,(int)pow(nPoints,i+1),i+1,i+1, modesInvolved, modesInvolved, sliceNeeded, weightMarkers2);  
         }//if indexOfMode
       }//for j
     }//for i
@@ -212,7 +212,7 @@ double Potential::Tuplet::getTotalIntegral() {
   double integralValue = 0.0;
   //obtain Tuplet's contribution
   int weightMarkers[20] = {0};
-  integralValue += (dim-1)*getIntegral(0, potLength, dim, dim, modeSubset, pot, weightMarkers);
+  integralValue += (dim-1)*getIntegral(0, potLength, dim, dim, modeSubset, modeSubset, pot, weightMarkers);
   
   //include condition for 2mode VSCF
   if(dim > 2) {
@@ -220,23 +220,23 @@ double Potential::Tuplet::getTotalIntegral() {
     for(int i=0 ; i<dim-2 ; i++) {
       for(int j=0 ; j<subTuplets[i].size() ; j++) {
         int weightMarkers2[20] = {0};
-        integralValue += (i+1)*getIntegral(0,(int)pow(nPoints,i+2),i+2,i+2,subTuplets[i][j]->modeSet, subTuplets[i][j]->potSet,weightMarkers2); 
+        integralValue += (i+1)*getIntegral(0,(int)pow(nPoints,i+2),i+2,i+2,subTuplets[i][j]->modeSet,subTuplets[i][j]->modeSet, subTuplets[i][j]->potSet,weightMarkers2); 
       }
     }
   }
   return integralValue;
 }
 
-double Potential::Tuplet::getIntegral(int startIndex, int endIndex, int couplingDegree, int currentDim, std::vector<Mode*>& modes, std::vector<double>& potential, int* weightMarkers) {
+double Potential::Tuplet::getIntegral(int startIndex, int endIndex, int couplingDegree, int currentDim, std::vector<Mode*>& bra, std::vector<Mode*>& ket, std::vector<double>& potential, int* weightMarkers) {
   int potSize = endIndex - startIndex;
   double integralValue = 0.0;
   //Base Case: 1D
   if(potSize == nPoints) {
     for(int i=0 ; i<nPoints ; i++) {
-      integralValue += modes[couplingDegree-1]->getIntegralComponent(i)*potential[startIndex+i];
+      integralValue += bra[couplingDegree-1]->getIntegralComponent(i)*ket[couplingDegree-1]->getIntegralComponent(i)*potential[startIndex+i];
     }
     for(int i=0 ; i<couplingDegree-1 ; i++) {
-      integralValue *= modes[i]->getIntegralComponent(weightMarkers[i]);
+      integralValue *= bra[i]->getIntegralComponent(weightMarkers[i])*ket[i]->getIntegralComponent(weightMarkers[i]);
     }
   } else {
     int newPotSize = potSize/nPoints;
@@ -247,7 +247,7 @@ double Potential::Tuplet::getIntegral(int startIndex, int endIndex, int coupling
       }
       weightMarkerCopy[couplingDegree-currentDim] = i;
       integralValue += getIntegral(startIndex+i*newPotSize, startIndex+(i+1)*newPotSize, couplingDegree,
-                      currentDim-1, modes, potential, weightMarkerCopy);
+                      currentDim-1, bra,ket, potential, weightMarkerCopy);
     }
   }
   return integralValue;
