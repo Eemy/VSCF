@@ -149,8 +149,14 @@ if(iter == 99) {
 print(results,"VSCF failed to converge.\n");
 excitedEnergies[0] = energy;
 }}
+/////////////////End Ground-State VSCF/////////////////////
 
+//Save ground state for dipole calculations
+for(int i=0 ; i<nModes ; i++) {
+ dof[i]->setGroundState(); 
+}
 
+////////////////////Excited-State VSCF/////////////////////
 for(int z = 0 ; z< nModes ; z++) {
 prevEnergy = 0.0;
 for(int i = 0 ; i< nModes ; i++) {
@@ -219,6 +225,9 @@ print(results,"VSCF failed to converge.\n");
 excitedEnergies[z+1] = energy;
 }}
 }
+
+///////////////////////////////////////DIPOLE CALCULATIONS/////////////////////////////
+
 
 
   //Print out all the transition frequencies

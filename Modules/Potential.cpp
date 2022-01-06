@@ -233,10 +233,10 @@ double Potential::Tuplet::getIntegral(int startIndex, int endIndex, int coupling
   //Base Case: 1D
   if(potSize == nPoints) {
     for(int i=0 ; i<nPoints ; i++) {
-      integralValue += bra[couplingDegree-1]->getIntegralComponent(i)*ket[couplingDegree-1]->getIntegralComponent(i)*potential[startIndex+i];
+      integralValue += bra[couplingDegree-1]->getIntegralComponent(i)*ket[couplingDegree-1]->getIntegralComponent(i)*potential[startIndex+i]*bra[couplingDegree-1]->getWeight(i);
     }
     for(int i=0 ; i<couplingDegree-1 ; i++) {
-      integralValue *= bra[i]->getIntegralComponent(weightMarkers[i])*ket[i]->getIntegralComponent(weightMarkers[i]);
+      integralValue *= bra[i]->getIntegralComponent(weightMarkers[i])*ket[i]->getIntegralComponent(weightMarkers[i])*bra[i]->getWeight(weightMarkers[i]);
     }
   } else {
     int newPotSize = potSize/nPoints;

@@ -44,8 +44,8 @@ Mode::~Mode() {
 }
 
 //===================================================================
-void Mode::setGroundState(double* groundWave) {
-  groundState = groundWave; 
+void Mode::setGroundState() {
+  groundState = waveFcn; 
 }
 
 void Mode::updateWaveFcn(double* newWaveFcn) {
@@ -81,6 +81,6 @@ double Mode::getIntegralComponent(int point) {
   for(int i=0 ; i<nBasis ; i++) {
     integralComponent += hermiteEval[i*nPoints+point]*norm[i]*waveFcn[i];
   }
-  integralComponent *= weights[point];//deleted sqrt(alpha);
+//  integralComponent *= weights[point];//deleted sqrt(alpha);
   return integralComponent;
 }
