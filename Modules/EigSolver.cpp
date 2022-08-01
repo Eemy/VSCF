@@ -69,7 +69,7 @@ double EigSolver::solveMode(Mode* mode, double* pot, int state) {
     //Update and Return Requested Information
     double* newWaveFcn = new double[nBasis];
     for(int i=0 ; i<nBasis ; i++) {
-//      printf("%.8f\n",H[nBasis*state+i]);
+      //printf("%.8f\n",H[nBasis*state+i]);
       newWaveFcn[i] = H[nBasis*state+i];
     }
     mode->updateWaveFcn(newWaveFcn);
