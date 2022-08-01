@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstdio>
+#include <stdbool.h>
 #include "Mode.h"
 #include "../UtilityFunc/ghQuad.h"
 
@@ -21,6 +22,8 @@ Mode::Mode(double _omega, double _m, int _nPoints) {
     weights = new double[nPoints];
     hermiteEval = new double[nBasis*nPoints];
     norm = new double[nBasis];
+    groundState = NULL;
+    excitedState = NULL;
 
     //Set up some of the arrays
     gauher(points,weights,nPoints);
@@ -30,6 +33,10 @@ Mode::Mode(double _omega, double _m, int _nPoints) {
       }
       norm[i] = 1/(sqrt(pow(2.0,i)*factorial(i)))*pow(1/pi,0.25);
     }
+
+    //Dipoles: Mode is excited
+    excited = false;
+    //integrationMode = 
 }
 
 Mode::~Mode() {
@@ -39,9 +46,23 @@ Mode::~Mode() {
   delete[] points;
   delete[] hermiteEval;
   delete[] norm;
+  //delete[] groundState;
+  delete[] excitedState;
 }
 
 //===================================================================
+void Mode::setGroundState() {
+  groundState = new double[nBasis];
+  for(int i=0 ; i<nBasis; i++)
+    groundState[i] = waveFcn[i]; 
+}
+
+void Mode::setExcitedState() {
+  excitedState = new double[nBasis];
+  for(int i=0 ; i<nBasis; i++)
+    excitedState[i] = waveFcn[i]; 
+}
+
 void Mode::updateWaveFcn(double* newWaveFcn) {
   delete[] oldWaveFcn; //deallocate original memory block
   oldWaveFcn = waveFcn; //move pointer to another memory block
@@ -58,8 +79,16 @@ double Mode::computeMaxDiff() {
   return diff;
 }
 
-//============================GETTERS================================
+//============================GETTERS/SETTERS================================
 double* Mode::getWaveFcn() {return waveFcn;}
+double* Mode::getGState() {return groundState;}
+double* Mode::getEState() {return excitedState;}
+double Mode::getOverlapEG() {
+  double integral = 0.0;
+  for(int i=0 ; i<nBasis ; i++)
+    integral += groundState[i]*excitedState[i];
+  return integral;
+}
 double Mode::getAlpha() {return alpha;}
 double Mode::getOmega() {return omega;}
 double Mode::getMass() {return m;}
@@ -67,16 +96,25 @@ int Mode::getNPoints() {return nPoints;}
 double Mode::getWeight(int index) {return weights[index];}
 double Mode::getHerm(int herm, int point) {return hermiteEval[herm*nPoints+point];}
 double Mode::getNorm(int index) {return norm[index];}
-double Mode::getPoint(int index) {return points[index];}
+double Mode::getPoint(int index) {return points[index]/(sqrt(alpha));}
 
+void Mode::setExcited(bool status) {excited = status;}
 //====================FOR EFFECTIVE POTENTIAL=======================
 double Mode::getIntegralComponent(int point) {
+  //Dipole: bra(excited) and ket(ground) different
+  if(excited) {
+    double groundIntegral = 0.0;
+    double excitedIntegral = 0.0;
+    for(int i=0 ; i<nBasis ; i++) {
+      groundIntegral += hermiteEval[i*nPoints+point]*norm[i]*groundState[i];
+      excitedIntegral += hermiteEval[i*nPoints+point]*norm[i]*excitedState[i];
+    }
+    return excitedIntegral*groundIntegral;
+  }
   double integralComponent = 0.0;
   for(int i=0 ; i<nBasis ; i++) {
-//    printf("InfoUsed: %.8f %.8f %.8f\n",hermiteEval[i*nBasis+point],norm[i],waveFcn[i]);
     integralComponent += hermiteEval[i*nPoints+point]*norm[i]*waveFcn[i];
   }
-  double finalIntegralComponent = integralComponent*integralComponent;
-  finalIntegralComponent *= weights[point];//deleted sqrt(alpha);
-  return finalIntegralComponent;
+
+  return integralComponent*integralComponent;
 }

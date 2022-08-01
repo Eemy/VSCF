@@ -1,3 +1,10 @@
+for(int i=0 ; i<nModes ; i++) {
+  for(int j=0 ; j<3 ; j++) {
+    intensities[i] += intensityComponents[3*i+j]*intensityComponents[3*i+j]; 
+  }
+  intensities[i] *= (excitedEnergies[i+1]-excitedEnergies[0])*2.0*pi*Na/(3.0*c_in_au*c_in_au)*a0_to_cm*1.0E-5; //to km/mol
+}
+
   //Print out all the transition frequencies
   print(results,"************************************************************************\n");
   print(results," VSCF ground-state energy: (cm^-1) \n");
@@ -7,7 +14,7 @@
   print(results," \n");
   print(results,"  Harmonic        VSCF            Intensity(km/mol)\n");
   for(int i=0; i<nModes ; i++) {
-  fprintf(results," % -15.4f % -15.4f \n", freq[i],(excitedEnergies[i+1]-excitedEnergies[0])*(219474.6313708));
+  fprintf(results," % -15.4f % -15.4f % -15.4f \n", freq[i],(excitedEnergies[i+1]-excitedEnergies[0])*(219474.6313708),intensities[i]);
   }
 
   //DEALLOCATE
@@ -16,12 +23,20 @@
     for(int i=0 ; i<nModes ; i++) {
       delete[] effV[i];
       delete[] slices[i];
+      delete[] dipSlices[0][i];
+      delete[] dipSlices[1][i];
+      delete[] dipSlices[2][i];
       delete dof[i];
     }
     delete[] effV;
     delete[] slices;
+    delete[] dipSlices[0];
+    delete[] dipSlices[1];
+    delete[] dipSlices[2];
     delete[] dof;
     delete[] excitedEnergies;
+    delete[] intensities;
+    delete[] intensityComponents;
   }
   return 0;
 }

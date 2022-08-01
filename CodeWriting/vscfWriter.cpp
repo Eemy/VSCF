@@ -43,7 +43,21 @@ int main(int argc, char** argv) {
     //Before iterations: Potential objects
     if(numMethods == 1) {
       print(script,"Potential pot(V,1,couplingDegree,nModes,nPoints,expectedLength,dof);\n");
-      print(script,"double** slices = pot.get1DSlices();\n");
+      print(script,"Potential dx(Dx,1,couplingDegree,nModes,nPoints,expectedLength,dof);\n");
+      print(script,"Potential dy(Dy,1,couplingDegree,nModes,nPoints,expectedLength,dof);\n");
+      print(script,"Potential dz(Dz,1,couplingDegree,nModes,nPoints,expectedLength,dof);\n\n");
+      print(script,"double** slices = pot.get1DSlices();\n\n");
+
+      print(script,"std::vector<double**> dipSlices;\n");
+      print(script,"dipSlices.push_back(dx.get1DSlices());\n");
+      print(script,"dipSlices.push_back(dy.get1DSlices());\n");
+      print(script,"dipSlices.push_back(dz.get1DSlices());\n");
+
+      
+      print(script,"std::vector<Potential*> dipoles;\n");
+      print(script,"dipoles.push_back(&dx);\n");
+      print(script,"dipoles.push_back(&dy);\n");
+      print(script,"dipoles.push_back(&dz);\n");
     } else {
       for(int i=0 ; i<numMethods ; i++) {
         if(i==0) {
@@ -58,7 +72,7 @@ int main(int argc, char** argv) {
       }   
     }
     print(script,"\n");
-    
+
     print(script,"//Prepare: eigensolver on pure 1D slices for each mode\n");
     print(script,makeLoopHeader("i","0","nModes").c_str());
     print(script,"prevEnergy += solver.solveMode(dof[i],slices[i],0);\n}\n");
@@ -72,7 +86,7 @@ int main(int argc, char** argv) {
         print(script,"if(i==z) {\nprevEnergy += solver.solveMode(dof[i],slices[i],1);\n");
         print(script,"} else {\n prevEnergy += solver.solveMode(dof[i],slices[i],0);\n}\n}\n");
       }
-      fprintf(script,makeLoopHeader("iter","1","100").c_str());
+      fprintf(script,makeLoopHeader("iter","1","maxIter").c_str());
       print(script,"int counter = 0;\n");  
       fprintf(script,makeLoopHeader("i","0","nModes").c_str());
       fprintf(script,makeLoopHeader("j","0","nPoints").c_str());
@@ -160,26 +174,62 @@ int main(int argc, char** argv) {
       print(script,"if(checkConvergence(dof,energy,nModes)) {\n");
       print(script,"fprintf(results,\"Converged at iteration REPLACEd\\n\",iter);\n");
       if(i != 0) {
-        print(script,"fprintf(results,\"Excited-State VSCF Energy is: REPLACE.8f\\n\", energy*219474.6313708);\n");
+        print(script,"fprintf(results,\"Mode REPLACEi Excited-State VSCF Energy is: REPLACE.8f\\n\",z,energy*219474.6313708);\n");
         print(script,"excitedEnergies[z+1] = energy;\nbreak;\n} else {\n");
         print(script,"prevEnergy = energy;\n}\n");      
-        print(script,"if(iter == 99) {\nprint(results,\"VSCF failed to converge.\\n\");\nexcitedEnergies[z+1] = energy;\n}");
+        print(script,"if(iter == maxIter-1) {\nfprintf(results,\"Mode REPLACEi VSCF failed to converge.\\n\",z);\nexcitedEnergies[z+1] = energy;\n}");
       } else {
         print(script,"fprintf(results,\"Ground-State VSCF Energy is: REPLACE.8f\\n\", energy*219474.6313708);\n");
         print(script,"excitedEnergies[0] = energy;\nbreak;\n} else {\n");
         print(script,"prevEnergy = energy;\n}\n");      
-        print(script,"if(iter == 99) {\nprint(results,\"VSCF failed to converge.\\n\");\nexcitedEnergies[0] = energy;\n}");
+        print(script,"if(iter == maxIter-1) {\nprint(results,\"Ground-State VSCF failed to converge.\\n\");\nexcitedEnergies[0] = energy;\n}");
 
       }
      
       //Close remaining loops
-      print(script,"}\n");
+      print(script,"\n}\n");
       if(i != 0) {
-        print(script,"}\n");
+        print(script,"dof[z]->setExcitedState();\n}\n");
+        print(script,"////////End Excited-State VSCF///////\n\n");
+      } else {
+        print(script,"///////End Ground-State VSCF/////////\n");
+        fprintf(script,makeLoopHeader("i","0","nModes").c_str());
+        print(script,"dof[i]->setGroundState();\n}\n");
+        print(script,"/////////Excited-State VSCF//////////\n");
       }
-      print(script,"\n\n");
 
     }//end i states
+
+/////////////////////////////////////////DIPOLES////////////////////////////////////////////
+    fprintf(script,makeLoopHeader("i","0","nModes").c_str());
+    print(script,"dof[i]->updateWaveFcn(dof[i]->getGState());\noverlaps.push_back(dof[i]->getOverlapEG());\n}\n\n");
+    print(script,"//DIPOLE CALCULATIONS\n");
+    
+    fprintf(script,makeLoopHeader("comp","0","3").c_str());
+    print(script,"int counter = 0;\n");
+
+    fprintf(script,makeLoopHeader("a","0","nModes").c_str());
+    print(script,"intensityComponents[3*a+comp] += dipoles[comp]->integrateSlice(dof[a],dipSlices[comp][a],true);\n");//<1|D(1)|0> Integrals
+    for(int loopCount = 1 ; loopCount < coupling ; loopCount++) {
+      std::string start(loopVars[loopCount-1] + "+1");
+      fprintf(script,makeLoopHeader(loopVars[loopCount],start,"nModes").c_str());
+      std::ostringstream ss;
+      ss << loopCount;
+
+      if(loopCount == 1) {
+        print(script,"intensityComponents[3*a+comp] += dipoles[comp]->integrateSlice(dof[b],dipSlices[comp][b],false)*overlaps[a];\n");        
+        print(script,"intensityComponents[3*b+comp] += dipoles[comp]->integrateSlice(dof[a],dipSlices[comp][a],false)*overlaps[b];\n");        
+      }
+    }
+    for(int i=0 ; i<coupling ; i++) {
+      print(script,"intensityComponents[3*"+ loopVars[i] + "+comp] += dipoles[comp]->getDipole(counter,"+std::to_string(i)+");\n"); 
+    }
+    print(script,"counter++;");
+    for(int i=0 ; i<coupling ; i++) {
+      print(script,"\n}");
+    }
+    print(script,"\n}\n");
+
     fclose(script);
     
     delete[] loopVars;

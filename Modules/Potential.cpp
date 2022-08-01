@@ -19,7 +19,7 @@ std::string appendKey(int modeIndex) {
 //////////////////////////////////////////////START CLASS//////////////////////////////////////////////////
 Potential::Potential(double* _pot, int _minDim, int _dimension, int _nModes, int _nPoints, int _totalLength, Mode** _modes) {
   dim = _dimension;
-  if(_minDim == 1) {
+  if(_minDim == 1 && dim != 1) {
     minDim = 2;
   } else {
     minDim = _minDim;
@@ -208,7 +208,10 @@ double Potential::Tuplet::getEffVIntegral(int modeSelection, int modeSlice) {
   return integralValue;
 }
 
-double Potential::Tuplet::getTotalIntegral() {
+double Potential::Tuplet::getTotalIntegral(int excitedIndex) {
+  if(excitedIndex != -1)
+    modeSubset[excitedIndex]->setExcited(true);  
+
   double integralValue = 0.0;
   //obtain Tuplet's contribution
   int weightMarkers[20] = {0};
@@ -224,19 +227,22 @@ double Potential::Tuplet::getTotalIntegral() {
       }
     }
   }
+  
+  if(excitedIndex != -1)
+    modeSubset[excitedIndex]->setExcited(false);
   return integralValue;
 }
 
-double Potential::Tuplet::getIntegral(int startIndex, int endIndex, int couplingDegree, int currentDim, std::vector<Mode*>& modes, std::vector<double>& potential, int* weightMarkers) {
+double Potential::Tuplet::getIntegral(int startIndex, int endIndex, int couplingDegree, int currentDim, std::vector<Mode*>& psi, std::vector<double>& potential, int* weightMarkers) {
   int potSize = endIndex - startIndex;
   double integralValue = 0.0;
   //Base Case: 1D
   if(potSize == nPoints) {
     for(int i=0 ; i<nPoints ; i++) {
-      integralValue += modes[couplingDegree-1]->getIntegralComponent(i)*potential[startIndex+i];
+      integralValue += psi[couplingDegree-1]->getIntegralComponent(i)*potential[startIndex+i]*psi[couplingDegree-1]->getWeight(i);
     }
     for(int i=0 ; i<couplingDegree-1 ; i++) {
-      integralValue *= modes[i]->getIntegralComponent(weightMarkers[i]);
+      integralValue *= psi[i]->getIntegralComponent(weightMarkers[i])*psi[i]->getWeight(weightMarkers[i]);
     }
   } else {
     int newPotSize = potSize/nPoints;
@@ -247,7 +253,7 @@ double Potential::Tuplet::getIntegral(int startIndex, int endIndex, int coupling
       }
       weightMarkerCopy[couplingDegree-currentDim] = i;
       integralValue += getIntegral(startIndex+i*newPotSize, startIndex+(i+1)*newPotSize, couplingDegree,
-                      currentDim-1, modes, potential, weightMarkerCopy);
+                      currentDim-1, psi, potential, weightMarkerCopy);
     }
   }
   return integralValue;
@@ -262,10 +268,31 @@ double Potential::integralDriver(int index, int modeSelection, int modeSlice) {
 double Potential::getVMinus() {
   double Vminus = 0.0;
   for(int i=0 ; i<totalLength/potLength ; i++) {
-    Vminus += tuplets[i]->getTotalIntegral();
+    Vminus += tuplets[i]->getTotalIntegral(-1);
   } 
-
   return Vminus;
+}
+
+double Potential::getDipole(int index, int excitedModeIndex) {
+  return tuplets[index]->getTotalIntegral(excitedModeIndex);
+}
+
+double Potential::integrateSlice(Mode* mode, double* slice, bool excite) {
+  if(excite)
+    mode->setExcited(true);   
+
+  int weightMarkers[20] = {0};
+  std::vector<Mode*> psi;
+  psi.push_back(mode);
+  std::vector<double> potential;
+  for(int i=0 ; i<nPoints ; i++)
+    potential.push_back(slice[i]);    
+
+  //It doesn't matter which tuple is used, just need integrating function
+  double integralVal = tuplets[0]->getIntegral(0,nPoints,1,1,psi,potential,weightMarkers);  
+  if(excite)
+    mode->setExcited(false);
+  return integralVal;
 }
  
 double** Potential::get1DSlices() {
