@@ -8,7 +8,7 @@ class cpot;
 class Mode;
 class Potential {
   public:
-    Potential(double*, int, int, int, int, int, Mode**);
+    Potential(std::string, int, int, int, int, std::vector<Mode*>&);
     ~Potential();
     double** get1DSlices();
     double integralDriver(int, int, int);
@@ -35,7 +35,6 @@ class Potential {
         std::vector<int> indices;
         std::vector<std::vector<SubTup*>> subTuplets;
         std::vector<double> pot;
-//want these variables to be static for memory efficiency
         int dim;
         int minSubDim;
         int nPoints;
@@ -52,16 +51,16 @@ class Potential {
         void setUp(int, std::vector<double>&, std::unordered_map<std::string,int>&, std::vector<int>&, std::vector<int>&, std::vector<Mode*>&);
     };
   private: 
-    double *fullPot;
+    std::string file;
     int minDim;
     int dim;
     int totalLength;
     int potLength;
     std::vector<int> subspaces;
-//    Tuplet** tuplets;
     std::vector<Tuplet*> tuplets;
+    //std::unordered_map<std::string,Tuplet*> tuplets;
     std::unordered_map<std::string,int> tupletChecker;
-    void fillChecker(int&, int, std::vector<int>&, Mode**); 
+    void readPot(std::vector(Mode*)&);
 };
 
 #endif

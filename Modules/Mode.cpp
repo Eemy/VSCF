@@ -9,12 +9,11 @@ double pi =  3.1415926535897932384626433832795;
 double au_to_wn = 219474.6313708;
 double mass_au  = 1822.8884848961380701;
 
-Mode::Mode(double _omega, double _m, int _nPoints) {
+Mode::Mode(double _omega, int _nPoints) {
     omega = _omega/au_to_wn;
-    m = _m*mass_au;
     nPoints = _nPoints;
     nBasis = nPoints-1;
-    alpha = m*omega;
+    //alpha = m*omega;
 
     waveFcn = new double[nBasis];
     oldWaveFcn = NULL;
@@ -89,14 +88,14 @@ double Mode::getOverlapEG() {
     integral += groundState[i]*excitedState[i];
   return integral;
 }
-double Mode::getAlpha() {return alpha;}
+//double Mode::getAlpha() {return alpha;}
 double Mode::getOmega() {return omega;}
-double Mode::getMass() {return m;}
+//double Mode::getMass() {return m;}
 int Mode::getNPoints() {return nPoints;}
 double Mode::getWeight(int index) {return weights[index];}
 double Mode::getHerm(int herm, int point) {return hermiteEval[herm*nPoints+point];}
 double Mode::getNorm(int index) {return norm[index];}
-double Mode::getPoint(int index) {return points[index]/(sqrt(alpha));}
+//double Mode::getPoint(int index) {return points[index]/(sqrt(alpha));}
 
 void Mode::setExcited(bool status) {excited = status;}
 //====================FOR EFFECTIVE POTENTIAL=======================

@@ -4,7 +4,7 @@
 
 class Mode {
   public:
-    Mode(double, double, int);
+    Mode(double, int);
     ~Mode();
     void setGroundState(); 
     void setExcitedState();
@@ -27,7 +27,6 @@ class Mode {
   private:
     double alpha;
     double omega;
-    double m;
     int nPoints;
     int nBasis;
     double* waveFcn;

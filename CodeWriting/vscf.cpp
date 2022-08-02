@@ -16,7 +16,7 @@
 #define Na       6.02214179E23 
 //////////////////////////////////////////////////////////////////////
 
-void readin(double* freq, double* mass, int N);
+void readin(std::vector<Mode*>& dof, int N, int nPoints);
 void readPot(std::string, double* potential, int length, int potLength);
 bool checkConvergence(Mode** dof, double energy, int nModes);
 int fact(int n);
@@ -26,105 +26,86 @@ int lengthCheck(int nMode, int coupling);
 double prevEnergy = 0.0;
 
 int main(int argc, char* argv[]) {
-  if(argc!=5) printf("Error: <Nmodes> <Nquad> <couplingDegree> <#ofMethodsUsed>\n");
-  else {
+  const int defaultLength = 8;
+  int maxIter = 100;
+
+  if(argc < defaultLength) { 
+    printf("Error: <Nmodes> <Nquad> <EnergyFile> <DipoleXFile> <DipoleYFile> <DipoleZFile> <CouplingDegree> [<EnergyFile> <Dx> <Dy> <Dz> <dim> ...]\n");
+    exit(0);
+  }
+
   //SET-UP AND READ IN ARGS
-    int nModes = atoi(argv[1]);
-    int nPoints = atoi(argv[2]);
-    int couplingDegree = atoi(argv[3]);
-    int maxIter = 100;
-    int numMethods = atoi(argv[4]);    
+  int nModes = atoi(argv[1]); //arg1
+  int nPoints = atoi(argv[2]); //arg2
+  std::vector<std::string> potFileNames;
+  potFileNames.push_back(argv[3]); //arg3
+  std::vector<std::string> dipFileNames;
+  dipFileNames.push_back(argv[4]); //arg4
+  dipFileNames.push_back(argv[5]); //arg5
+  dipFileNames.push_back(argv[6]); //arg6
+  std::vector<int> potDims;
+  potDims.push_back(atoi(argv[7])); //arg7
 
-    std::vector<int> potDims;
-    std::vector<int> expectedLengths;
-    int expectedLength = 0;
-    std::vector<std::string> potFileNames;
-    std::vector<double*> potentials;
-    double *V;
-    double* Dx;
-    double* Dy;
-    double* Dz;
-    std::vector<double> overlaps;
-//===================================Read in Potential(s) and Dipoles======================================
-    if(numMethods > 1) {
-      potDims.resize(numMethods);
-      potFileNames.resize(numMethods);
-      for(int i=0 ; i<numMethods ; i++) {
-        std::cout << "File name of potential:";
-        std::cin >> potFileNames[i];
-        std::cout << "Dimension of potential: (should be in ascending order)";
-        std::cin >> potDims[i];
+/////////////////////////Create Mode, EigSolver, Potential Objects////////////////////////
+  std::vector<Mode*> dof;
+  readin(dof,nModes,nPoints); 
+  EigSolver solver(nPoints);
+
+  std::vector<Potential*> pot;
+  std::vector<Potential*> dip;
+  //For first set of V and D
+  pot.push_back(new Potential(potFileNames[0],1,potDims[0],nModes,nPoints,dof));
+  for(int i=0 ; i<3 ; i++) 
+    dip.push_back(new Potential(dipFileNames[i],1,potDims[0],nModes,nPoints,dof));
+
+  //For subsequent sets of V and D (5 represents number of args one set occupies in argv)
+  if ((argc-defaultLength)%5 == 0 && (argc-defaultLength) > 0) {
+    int len = (argc-defaultLength)/5;
+    for(int i=1 ; i<=len ; i++) {
+      potFileNames.push_back(argv[defaultLength+5*(i-1)]);
+      potDims.push_back(atoi(argv[defaultLength+5*(i-1)+4]));
+      pot.push_back(new Potential(potFileNames[i],potDims[i-1]+1,potDims[i],nModes,nPoints,dof)); 
+      for(int j=1 ; j<=3 ; j++) {
+        dipFileNames.push_back(argv[defaultLength+5*(i-1)+j]);
+        dip.push_back(new Potential(dipFileNames[i*3+(j-1)],potDims[i-1]+1,potDims[i],nModes,nPoints,dof));
       }
-      char finalCheck = 'n';
-      std::cout << "Last Q: Is the first potential the one you want to take 1D slices from?(y/n)";
-      std::cin >> finalCheck;
-      if(finalCheck != 'y') { 
-        std::cout << "Go back and change it then!\n";
-        exit(0);       
-      }
+    } 
+  } else {
+    printf("The number of args is invalid. Check your input and try again.\n");
+    exit(0);
+  }
 
-      //Read in the potentials
-      expectedLengths.resize(numMethods);
-      potentials.resize(numMethods);
-      for(int i=0 ; i<numMethods ; i++) {
-        expectedLengths[i] = lengthCheck(nModes,potDims[i])*(int) pow(nPoints,potDims[i]);
-        potentials[i] = new double[expectedLengths[i]];
-        readPot(potFileNames[i],potentials[i],(int) pow(nPoints,potDims[i]),expectedLengths[i]);
-      }
-    } else { //if just a single method is used
-      expectedLength = lengthCheck(nModes,couplingDegree)*(int)pow(nPoints,couplingDegree);
-      V = new double[expectedLength];
-      readPot("V.dat",V,(int) pow(nPoints,couplingDegree),expectedLength);
+  double** slices = pot[0]->get1DSlices();
+  std::vector<double**> dipSlices;
+  dipSlices.push_back(dip[0]->get1DSlices());
+  dipSlices.push_back(dip[1]->get1DSlices());
+  dipSlices.push_back(dip[2]->get1DSlices());
 
-      //Read in the dipoles
-      Dx = new double[expectedLength];
-      Dy = new double[expectedLength];
-      Dz = new double[expectedLength];
-      readPot("D3x.dat",Dx,(int) pow(nPoints,couplingDegree),expectedLength);
-      readPot("D3y.dat",Dy,(int) pow(nPoints,couplingDegree),expectedLength);
-      readPot("D3z.dat",Dz,(int) pow(nPoints,couplingDegree),expectedLength);
-      for(int i=0 ; i<expectedLength ; i++) {
-        Dx[i]*=debye_to_ea0;
-        Dy[i]*=debye_to_ea0;
-        Dz[i]*=debye_to_ea0;
-      }     
-    }
-//===================================A few more arrays...==========================================
+  //Allocate a few additional arrays for the calculations
+  double** effV = new double*[nModes];
+  for(int i=0 ; i<nModes ; i++) {
+    effV[i] = new double[nPoints];
+  }
+  double* excitedEnergies = new double[nModes+1];
+  double* intensityComponents = new double[3*nModes];
+  double* intensities = new double[nModes];
+  std::vector<double> overlaps;
 
-    EigSolver solver(nPoints);
-    double* freq = new double[nModes];
-    double* mass = new double[nModes];
-    readin(freq, mass, nModes); 
-    Mode** dof = new Mode*[nModes];
-    for(int i=0 ; i<nModes ; i++) {
-      dof[i] = new Mode(freq[i],mass[i],nPoints);
-    }    
-    double** effV = new double*[nModes];
-    for(int i=0 ; i<nModes ; i++) {
-      effV[i] = new double[nPoints];
-    }
-    double* excitedEnergies = new double[nModes+1];
-    double* intensityComponents = new double[3*nModes];
-    double* intensities = new double[nModes];
-    //Open results file once all set-up is completed
-    FILE *results = fopen("eemVSCF.dat","w");
-//=================================================================================================
-Potential pot(V,1,couplingDegree,nModes,nPoints,expectedLength,dof);
-Potential dx(Dx,1,couplingDegree,nModes,nPoints,expectedLength,dof);
-Potential dy(Dy,1,couplingDegree,nModes,nPoints,expectedLength,dof);
-Potential dz(Dz,1,couplingDegree,nModes,nPoints,expectedLength,dof);
+  //Open results file once all set-up is completed
+  FILE *results = fopen("eemVSCF.dat","w");
 
-double** slices = pot.get1DSlices();
-
-std::vector<double**> dipSlices;
-dipSlices.push_back(dx.get1DSlices());
-dipSlices.push_back(dy.get1DSlices());
-dipSlices.push_back(dz.get1DSlices());
-std::vector<Potential*> dipoles;
-dipoles.push_back(&dx);
-dipoles.push_back(&dy);
-dipoles.push_back(&dz);
-
+/*
+  readPot("V.dat",V,(int) pow(nPoints,couplingDegree),expectedLength);
+  readPot("D3x.dat",Dx,(int) pow(nPoints,couplingDegree),expectedLength);
+  readPot("D3y.dat",Dy,(int) pow(nPoints,couplingDegree),expectedLength);
+  readPot("D3z.dat",Dz,(int) pow(nPoints,couplingDegree),expectedLength);
+  for(int i=0 ; i<expectedLength ; i++) {
+    Dx[i]*=debye_to_ea0;
+    Dy[i]*=debye_to_ea0;
+    Dz[i]*=debye_to_ea0;
+ }
+*/
+//====================================Begin VSCF============================================
 //Prepare: eigensolver on pure 1D slices for each mode
 for(int i = 0 ; i< nModes ; i++) {
 prevEnergy += solver.solveMode(dof[i],slices[i],0);
@@ -267,49 +248,52 @@ for(int i=0 ; i<nModes ; i++) {
   }
 
   //DEALLOCATE
-    delete[] freq;
-    delete[] mass;
-    for(int i=0 ; i<nModes ; i++) {
-      delete[] effV[i];
-      delete[] slices[i];
-      delete[] dipSlices[0][i];
-      delete[] dipSlices[1][i];
-      delete[] dipSlices[2][i];
-      delete dof[i];
-    }
-    delete[] effV;
-    delete[] slices;
-    delete[] dipSlices[0];
-    delete[] dipSlices[1];
-    delete[] dipSlices[2];
-    delete[] dof;
-    delete[] excitedEnergies;
-    delete[] intensities;
-    delete[] intensityComponents;
+  for(int i=0 ; i<nModes ; i++) {
+    delete[] effV[i];
+    delete[] slices[i];
+    delete[] dipSlices[0][i];
+    delete[] dipSlices[1][i];
+    delete[] dipSlices[2][i];
+    delete dof[i];
   }
+  delete[] effV;
+  delete[] slices;
+  delete[] dipSlices[0];
+  delete[] dipSlices[1];
+  delete[] dipSlices[2];
+  delete[] excitedEnergies;
+  delete[] intensities;
+  delete[] intensityComponents;
+  for(int i=0 ; i<dip.size() ; i++) delete dip[i];
+  for(int i=0 ; i<pot.size() ; i++) delete pot[i];
+
   return 0;
 }
 
 //=====================================OTHER METHODS==========================================
-void readin(double* freq, double* mass, int N) {
+void readin(std::vector<Mode*>& dof, int N, int nPoints) {
+  std::vector<double> freq;
   //read in frequencies 
   std::ifstream in("freq.dat",std::ios::in);
   if(!in) {
     printf("Error: freq.dat could not be opened\n");
     exit(0);
   }
+  double val = 0.0;
+  while(in >> val) {
+    freq.push_back(val);
+  }
 
-  for(int i=0 ; i<N ; i++) in >> freq[i];
-  in.close();
-  
-  //read in reduced masses
-  in.open("rmass.dat");
-  if(!in) {
-    printf("Error: rmass.dat could not be opened\n");
+  //Check size of freq file
+  if(freq.size() != N) {
+    printf("freq.dat is the wrong size.\n");
     exit(0);
   }
-  for(int i=0 ; i<N ; i++) in >> mass[i];
-  in.close();
+
+  //Create Mode objects and return
+  for(int i=0 ; i<N ; i++) {
+    dof.push_back(new Mode(freq[i],nPoints));
+  }    
 } 
 
 

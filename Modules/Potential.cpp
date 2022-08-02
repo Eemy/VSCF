@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <string>
 #include <vector>
+#include <fstream>
 
 std::string appendKey(int modeIndex) {
   if(modeIndex < 10)
@@ -17,38 +18,29 @@ std::string appendKey(int modeIndex) {
 }
 
 //////////////////////////////////////////////START CLASS//////////////////////////////////////////////////
-Potential::Potential(double* _pot, int _minDim, int _dimension, int _nModes, int _nPoints, int _totalLength, Mode** _modes) {
-  dim = _dimension;
-  if(_minDim == 1 && dim != 1) {
+Potential::Potential(std::string fileName, int _minDim, int _dimension, int _nModes, int _nPoints, std::vector<Mode*>& _modes) {
+ if(_minDim == 1 && dim != 1) {
     minDim = 2;
   } else {
     minDim = _minDim;
   }
-  fullPot = _pot;
+  dim = _dimension;
   nModes = _nModes;
   nPoints = _nPoints;
-  totalLength = _totalLength;
   potLength = (int) pow(_nPoints,_dimension);
-  for(int i=0 ; i<dim ; i++) {
+  for(int i=0 ; i<dim ; i++)
     subspaces.push_back((int) pow(nPoints,dim-i-1));
-  }
 
-//Set up Tuplets
-  tuplets.reserve(totalLength/potLength);
-  std::vector<int> iterations;
-  for(int i=0 ; i<dim ; i++) {iterations.push_back(i);}
-  int counter = 0;
-  fillChecker(counter,0,iterations,_modes);
-  for(int i = 0 ; i< totalLength/potLength ; i++) {
+  //Read potential and set up tuplets
+  file = fileName;
+  readPot(_modes);
+  for(int i=0 ; i<tuplets.size() ; i++) 
     tuplets[i]->setUpDriver(tupletChecker);
-  }  
 }
 
 Potential::~Potential() {
-  for(int i=0 ; i<totalLength/potLength ; i++) {
+  for(int i=0 ; i<totalLength/potLength ; i++)
     delete tuplets[i];
-  }
-  delete[] fullPot;
 }
 //================================================================
 //========================TUPLET NESTED CLASS=====================
@@ -316,31 +308,62 @@ double** Potential::get1DSlices() {
   return slices;
 }
 
-void Potential::fillChecker(int& counter, int recursionLevel, std::vector<int>& iter, Mode **_modes) {
-  if(recursionLevel == dim-1) {
-    while(iter[recursionLevel] < nModes) {
-      std::vector<Mode*> modeSubset(dim);
-      std::vector<int> indices(dim);
-      for(int i=0 ; i<dim ; i++) {
-        modeSubset[i] = _modes[iter[i]];
-        indices[i] = iter[i];
-      }
-      std::vector<double> tupletPot(potLength);
-      for(int i=0 ; i<potLength ; i++) {
-        tupletPot[i] = fullPot[counter*potLength+i];     
-      }
-      tuplets.push_back(new Tuplet(minDim,dim,nPoints,tupletPot,modeSubset,indices));    
-      iter[recursionLevel]++;
-      counter++;
-    }
-//Recursive Cases
-  } else { 
-    while(iter[recursionLevel] < nModes-iter.size()+recursionLevel+1) {
-      fillChecker(counter,recursionLevel+1,iter,_modes);
-      iter[recursionLevel]++;
-      for(int i=recursionLevel+1 ; i<dim ; i++) {
-        iter[i] = iter[i-1]+1;     
-      }
-    }   
+void Potential::readPot(std::vector(Mode*)& dof) {
+  //Find out how many tuples are in the file
+  sprintf(tupleFile,"%i.dat",dim);
+  std::ifstream in(tupleFile,std::ios::in);
+  if(!in) {
+    printf("Error: %s could not be opened\n",file.c_str());
+    exit(0);
   }
-}
+  std::vector<std::string> tupleNames;
+  while(std::getline(in,line))
+    tupleNames.push_back(line);
+  in.close();
+
+  //Read in actual potential, fill in tuple array
+  in.open(file);
+  int index = 0;
+  int tupleIndex = 0;
+  int potLength = pow(nPoints,dim); 
+  std::vector<double> tuplePot(potLength);
+  while(in >> double value) {
+    tuplePot[index%potLength] = value;
+    index++;
+    if(index%potLength == 0) {
+      //Parse tuple name to get modes and indices 
+      std::vector<int> indices;
+      std::vector<Mode*> modes;
+      std::string builder = "";
+      for(auto &ch : tupleNames[tupleIndex]) {
+        if(ch == '_') {
+          indices.push_back = std::stoi(builder);
+          modes.push_back = dof[std::stoi(builder)];
+          builder = "";
+        } else {
+          builder += ch;
+        } 
+      }
+      //Remove equilibrium energy
+      double eqEnergy = tuplePot[(potLength-1)/2];
+      for(int i=0 ; i<potLength ; i++) { 
+        tuplePot[i] -= eqEnergy;
+        if(file.find("D") == 0)
+          tuplePot[i] *= 0.393430307 //convert from debye_to_ea0 
+      }
+      tuplets.push_back(new Tuplet(minDim,dim,nPoints,tuplePot,modes,indices));  
+      tupleIndex++;
+    }
+  }
+  in.close();
+
+  //Check potential lengths
+  if(tupleIndex > tupleNames.size() || index > tupleNames.size()*potLength) {
+    printf("%s is too long.\n",fileName.c_str());
+    exit(0);
+  } 
+  if(tupleIndex < tupleNames.size() || index < tupleNames.size()*potLength) {
+    printf("%s is too short.\n",fileName.c_str());
+    exit(0);
+  }
+} 
