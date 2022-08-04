@@ -3,9 +3,9 @@
 
 # Three Folders:
 ## CodeWriting ##
-**UPDATE 8/3/2022:** The revamped version does not require any code writing. The only script needed is vscf.cpp with the executable vscf. It can be compiled with the makefile. Some major changes involving argument handling needs to be understand to use this version of the code.
+**UPDATE 8/3/2022:** The revamped version does not require any code writing. The only script needed is vscf.cpp with the executable vscf. It can be compiled with the makefile. Some major changes involving argument handling need to be understood to use this version of the code.
 
--Command line arguments lead with <Nmodes> and <Npoints>. Then after that point, you enter a series of 5 commands in this order: \<Name of Energy File\> \<Name of Dipole X File\> \<Name of Dipole Y File\> \<Name of Dipole Z File\> \<Dimensionality of Files\>. 
+-Command line arguments lead with \<Nmodes\> and \<Npoints\>. Then after that point, you enter a series of 5 commands in this order: \<Name of Energy File\> \<Name of Dipole X File\> \<Name of Dipole Y File\> \<Name of Dipole Z File\> \<Dimensionality of Files\>. 
 
 -The importance of this revamp is that you can enter any number of these set of 5 commands after the first one. For example, if the first set of files is for the 2MR, and you only want to paint in a couple of the triples beyond that, you may include just those triples in another set of files and enter them in another set of 5. This removes prep work needed to be done by the user.  
 
