@@ -3,18 +3,20 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <stdbool.h>
 
 class cpot;
 class Mode;
 class Potential {
   public:
-    Potential(std::string, int, int, int, int, std::vector<Mode*>&);
+    Potential(std::string, int, int, int, int);
     ~Potential();
-    double** get1DSlices();
+    std::vector<std::vector<double>> get1DSlices();
     double integralDriver(int, int, int);
     double getVMinus();
     double getDipole(int, int);
-    double integrateSlice(Mode*, double*, bool);
+    double integrateSlice(Mode*, int, bool);
+    std::vector<std::vector<int>> readPot(std::vector<Mode*>&, bool);
     int nPoints;
     int nModes;
   private:
@@ -54,13 +56,12 @@ class Potential {
     std::string file;
     int minDim;
     int dim;
-    int totalLength;
     int potLength;
+    std::vector<std::vector<double>> slices;
     std::vector<int> subspaces;
     std::vector<Tuplet*> tuplets;
     //std::unordered_map<std::string,Tuplet*> tuplets;
     std::unordered_map<std::string,int> tupletChecker;
-    void readPot(std::vector(Mode*)&);
 };
 
 #endif

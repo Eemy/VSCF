@@ -1,5 +1,6 @@
 #ifndef EIGSOLVER_H
 #define EIGSOLVER_H
+#include <vector>
 
 class Mode;
 class EigSolver {
@@ -10,7 +11,7 @@ class EigSolver {
   public:
     EigSolver(int);
     ~EigSolver();
-    double solveMode(Mode*, double*, int);
+    double solveMode(Mode*, std::vector<double>, int);
 };
 
 #endif

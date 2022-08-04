@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstdio>
+#include <vector>
 #include "Mode.h"
 #include "EigSolver.h"
 #include "../UtilityFunc/aux.h"
@@ -43,7 +44,7 @@ void EigSolver::buildTmat() {
 }
 
 //===============================================================
-double EigSolver::solveMode(Mode* mode, double* pot, int state) {
+double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state) {
     double* H = new double[nBasis*nBasis];
     for(int i=0 ; i<nBasis ; i++) {
       for(int j=0 ; j<nBasis ; j++) {

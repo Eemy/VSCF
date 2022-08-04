@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <stdbool.h>
 
 std::string appendKey(int modeIndex) {
   if(modeIndex < 10)
@@ -18,7 +19,7 @@ std::string appendKey(int modeIndex) {
 }
 
 //////////////////////////////////////////////START CLASS//////////////////////////////////////////////////
-Potential::Potential(std::string fileName, int _minDim, int _dimension, int _nModes, int _nPoints, std::vector<Mode*>& _modes) {
+Potential::Potential(std::string fileName, int _minDim, int _dimension, int _nModes, int _nPoints) {
  if(_minDim == 1 && dim != 1) {
     minDim = 2;
   } else {
@@ -30,16 +31,12 @@ Potential::Potential(std::string fileName, int _minDim, int _dimension, int _nMo
   potLength = (int) pow(_nPoints,_dimension);
   for(int i=0 ; i<dim ; i++)
     subspaces.push_back((int) pow(nPoints,dim-i-1));
-
-  //Read potential and set up tuplets
   file = fileName;
-  readPot(_modes);
-  for(int i=0 ; i<tuplets.size() ; i++) 
-    tuplets[i]->setUpDriver(tupletChecker);
+//  readPot(_modes);
 }
 
 Potential::~Potential() {
-  for(int i=0 ; i<totalLength/potLength ; i++)
+  for(int i=0 ; i<tuplets.size() ; i++)
     delete tuplets[i];
 }
 //================================================================
@@ -259,7 +256,7 @@ double Potential::integralDriver(int index, int modeSelection, int modeSlice) {
 
 double Potential::getVMinus() {
   double Vminus = 0.0;
-  for(int i=0 ; i<totalLength/potLength ; i++) {
+  for(int i=0 ; i<tuplets.size() ; i++) {
     Vminus += tuplets[i]->getTotalIntegral(-1);
   } 
   return Vminus;
@@ -269,101 +266,111 @@ double Potential::getDipole(int index, int excitedModeIndex) {
   return tuplets[index]->getTotalIntegral(excitedModeIndex);
 }
 
-double Potential::integrateSlice(Mode* mode, double* slice, bool excite) {
+double Potential::integrateSlice(Mode* mode, int modeIndex, bool excite) {
   if(excite)
     mode->setExcited(true);   
 
   int weightMarkers[20] = {0};
   std::vector<Mode*> psi;
   psi.push_back(mode);
-  std::vector<double> potential;
-  for(int i=0 ; i<nPoints ; i++)
-    potential.push_back(slice[i]);    
 
   //It doesn't matter which tuple is used, just need integrating function
-  double integralVal = tuplets[0]->getIntegral(0,nPoints,1,1,psi,potential,weightMarkers);  
+  double integralVal = tuplets[0]->getIntegral(0,nPoints,1,1,psi,slices[modeIndex],weightMarkers);  
   if(excite)
     mode->setExcited(false);
   return integralVal;
 }
  
-double** Potential::get1DSlices() {
-  //this entire 2d array needs to be freed elsewhere. DON'T LET THE MEMORY LEAK HAPPEN
-  double** slices = new double*[nModes];
-  for(int i=0 ; i<nModes ; i++)
-    slices[i] = new double[nPoints];
+std::vector<std::vector<double>> Potential::get1DSlices() { return slices; }
 
-  int center = (potLength-1)/2;
-  int halfPoint = (nPoints-1)/2;
-  for(int i=0 ; i<nModes ; i++) {
-    for(int j=0 ; j<nPoints ; j++) {
-      int index = j-halfPoint;
-      if(i<dim) {
-        slices[i][j] = fullPot[center+index*subspaces[i]];
-      } else {
-        slices[i][j] = fullPot[(i-dim+1)*potLength+center+index*subspaces[dim-1]];
-      }
-    }
-  }   
-  return slices;
-}
-
-void Potential::readPot(std::vector(Mode*)& dof) {
+//Making the assumption that the lowest degree Potential is a complete set
+std::vector<std::vector<int>> Potential::readPot(std::vector<Mode*>& dof, bool getSlices) {
   //Find out how many tuples are in the file
+  char tupleFile[100];
   sprintf(tupleFile,"%i.dat",dim);
   std::ifstream in(tupleFile,std::ios::in);
   if(!in) {
-    printf("Error: %s could not be opened\n",file.c_str());
+    printf("Error: %s could not be opened\n",tupleFile);
     exit(0);
   }
-  std::vector<std::string> tupleNames;
-  while(std::getline(in,line))
-    tupleNames.push_back(line);
+  std::string line;
+  std::vector<std::vector<int>> tupleIndices;
+  while(std::getline(in,line)) {
+    //Parse tuple name to get modes and indices 
+    std::vector<int> indices;
+    std::string builder = "";
+    for(auto &ch : line) {
+      if(ch == '_') {
+        indices.push_back(std::stoi(builder));
+        builder = "";
+      } else {
+        builder += ch;
+      } 
+    }
+    tupleIndices.push_back(indices);
+  }
   in.close();
-
+  
   //Read in actual potential, fill in tuple array
   in.open(file);
+  double value = 0.0;
   int index = 0;
   int tupleIndex = 0;
   int potLength = pow(nPoints,dim); 
   std::vector<double> tuplePot(potLength);
-  while(in >> double value) {
+  while(in >> value) {
     tuplePot[index%potLength] = value;
     index++;
+    //Once potential is filled up...
     if(index%potLength == 0) {
-      //Parse tuple name to get modes and indices 
-      std::vector<int> indices;
       std::vector<Mode*> modes;
-      std::string builder = "";
-      for(auto &ch : tupleNames[tupleIndex]) {
-        if(ch == '_') {
-          indices.push_back = std::stoi(builder);
-          modes.push_back = dof[std::stoi(builder)];
-          builder = "";
-        } else {
-          builder += ch;
-        } 
-      }
+      for(int i=0 ; i<tupleIndices[tupleIndex].size() ; i++) 
+        modes.push_back(dof[tupleIndices[tupleIndex][i]]);
       //Remove equilibrium energy
       double eqEnergy = tuplePot[(potLength-1)/2];
       for(int i=0 ; i<potLength ; i++) { 
         tuplePot[i] -= eqEnergy;
         if(file.find("D") == 0)
-          tuplePot[i] *= 0.393430307 //convert from debye_to_ea0 
+          tuplePot[i] *= 0.393430307; //convert from debye_to_ea0 
       }
-      tuplets.push_back(new Tuplet(minDim,dim,nPoints,tuplePot,modes,indices));  
+
+      tuplets.push_back(new Tuplet(minDim,dim,nPoints,tuplePot,modes,tupleIndices[tupleIndex]));  
       tupleIndex++;
     }
   }
   in.close();
 
-  //Check potential lengths
-  if(tupleIndex > tupleNames.size() || index > tupleNames.size()*potLength) {
-    printf("%s is too long.\n",fileName.c_str());
+ //Check potential lengths
+  if(tupleIndex > tupleIndices.size() || index > tupleIndices.size()*potLength) {
+    printf("%s is too long.\n",file.c_str());
     exit(0);
   } 
-  if(tupleIndex < tupleNames.size() || index < tupleNames.size()*potLength) {
-    printf("%s is too short.\n",fileName.c_str());
+  if(tupleIndex < tupleIndices.size() || index < tupleIndices.size()*potLength) {
+    printf("%s is too short.\n",file.c_str());
     exit(0);
   }
+
+  //Prepare to read 1D Slices
+  if(getSlices) {
+    slices.resize(nModes); 
+    for(int i=0 ; i<nModes ; i++)
+      slices[i].resize(nPoints);
+
+    int center = (potLength-1)/2;
+    int halfPoint = (nPoints-1)/2;
+    for(int i=0 ; i<nModes ; i++) {
+      for(int j=0 ; j<nPoints ; j++) {
+        int index = j-halfPoint;
+        if(i<dim) {
+          slices[i][j] = tuplets[0]->pot[center+index*subspaces[i]];
+        } else {
+          slices[i][j] = tuplets[(i-dim+1)]->pot[center+index*subspaces[dim-1]];
+        }
+    } }
+  }   
+
+  //Set up the tuples
+  for(int i=0 ; i<tuplets.size() ; i++) 
+    tuplets[i]->setUpDriver(tupletChecker);
+  return tupleIndices;
 } 
