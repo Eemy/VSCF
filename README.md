@@ -3,7 +3,7 @@
 
 # Three Folders:
 ## CodeWriting ##
-UPDATE 8/3/2022: The revamped version does not require any code writing. The only script needed is vscf.cpp with the executable vscf. It can be compiled with the makefile. Some major changes involving argument handling needs to be understand to use this version of the code.
+**UPDATE 8/3/2022:** The revamped version does not require any code writing. The only script needed is vscf.cpp with the executable vscf. It can be compiled with the makefile. Some major changes involving argument handling needs to be understand to use this version of the code.
 
 -Command line arguments lead with <Nmodes> and <Npoints>. Then after that point, you enter a series of 5 commands in this order: \<Name of Energy File\> \<Name of Dipole X File\> \<Name of Dipole Y File\> \<Name of Dipole Z File\> \<Dimensionality of Files\>. 
 
@@ -16,7 +16,7 @@ UPDATE 8/3/2022: The revamped version does not require any code writing. The onl
 
 -LASTLY, more files need to be included upfront so the code knows which tuples you are representing in the files. From the previous example, you need files named "2.dat" and "3.dat" in the same directory of your potentials and freq.dat files. See sample files in this directory on how they should be formatted. 
 
-Outdated: The key script is writeVSCF.csh here. It basically concatenates vscfFragment1.cpp, calls vscfWriter.cpp to write the body of the vscf code, then slaps on vscfFragment2.cpp at the end. It then compiles this final script called vscf.cpp and runs it. 
+Outdated: ~~The key script is writeVSCF.csh here. It basically concatenates vscfFragment1.cpp, calls vscfWriter.cpp to write the body of the vscf code, then slaps on vscfFragment2.cpp at the end. It then compiles this final script called vscf.cpp and runs it.~~ 
 
 ## Modules ##
 Has code for the custom classes I wrote, as well as their header files for linking (Mode, EigSolver, Potential). cpot is the code written by Matt Laskowski, which obtains differential coupling terms (2d to 6d) from Potentials. 
