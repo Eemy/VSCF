@@ -18,9 +18,6 @@
 
 void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints);
 bool checkConvergence(std::vector<Mode*> dof, double energy, int nModes);
-int fact(int n);
-void print(FILE* script, std::string line); 
-int lengthCheck(int nMode, int coupling);
 
 double prevEnergy = 0.0;
 
@@ -72,11 +69,11 @@ int main(int argc, char* argv[]) {
       potFileNames.push_back(argv[defaultLength+5*(i-1)]);
       potDims.push_back(atoi(argv[defaultLength+5*(i-1)+4]));
       pot.push_back(new Potential(potFileNames[i],potDims[i-1]+1,potDims[i],nModes,nPoints)); 
-      potIterators.push_back(pot[len]->readPot(dof,false));
+      potIterators.push_back(pot[i]->readPot(dof,false));
       for(int j=1 ; j<=3 ; j++) {
         dipFileNames.push_back(argv[defaultLength+5*(i-1)+j]);
         dip.push_back(new Potential(dipFileNames[i*3+(j-1)],potDims[i-1]+1,potDims[i],nModes,nPoints));
-        dipIterators.push_back(dip[len*3+j-1]->readPot(dof,false));
+        dipIterators.push_back(dip[i*3+j-1]->readPot(dof,false));
       }
     } 
   } else if((argc-defaultLength)%5 != 0) {
@@ -94,102 +91,111 @@ int main(int argc, char* argv[]) {
   //Open results file once all set-up is completed
   FILE *results = fopen("eemVSCF_new.dat","w");
 //====================================Begin VSCF============================================
-//Prepare: eigensolver on pure 1D slices for each mode
-for(int i = 0 ; i< nModes ; i++) {
-  prevEnergy += solver.solveMode(dof[i],slices[i],0);
-}
-for(int iter = 1 ; iter< maxIter ; iter++) {
-std::vector<std::vector<double>> effV = pot[0]->get1DSlices();
-for(int i=0 ; i<potIterators.size() ; i++) {
-  for(int j=0 ; j<potIterators[i].size() ; j++) {
-    for(int k=0 ; k<potIterators[i][j].size() ; k++) {
-      for(int l=0 ; l<nPoints ; l++) {
-        int modeIndex = potIterators[i][j][k];
-        effV[modeIndex][l] += pot[i]->integralDriver(j,k,l);
-      }
-    }//k loop: mode indices for tuple
-  }//j loop: tuples 
-}//i loop: potentials
-
-double energy = 0.0;
-for(int i = 0 ; i< nModes ; i++) {
-  energy += solver.solveMode(dof[i],effV[i],0);
-}
-for(int i=0 ; i<pot.size() ; i++) {
-  energy -= pot[i]->getVMinus();
-}
-if(checkConvergence(dof,energy,nModes)) {
-fprintf(results,"Converged at iteration %d\n",iter);
-fprintf(results,"Ground-State VSCF Energy is: %.8f\n", energy*219474.6313708);
-excitedEnergies[0] = energy;
-break;
-} else {
-prevEnergy = energy;
-}
-if(iter == maxIter-1) {
-print(results,"Ground-State VSCF failed to converge.\n");
-excitedEnergies[0] = energy;
-}
-}
-///////End Ground-State VSCF/////////
-for(int i = 0 ; i< nModes ; i++) {
-dof[i]->setGroundState();
-}
-/////////Excited-State VSCF//////////
-for(int z = 0 ; z< nModes ; z++) {
-prevEnergy = 0.0;
-for(int i = 0 ; i< nModes ; i++) {
-  if(i==z) {
-    prevEnergy += solver.solveMode(dof[i],slices[i],1);
-  } else {
+  //Prepare: eigensolver on pure 1D slices for each mode
+  for(int i = 0 ; i< nModes ; i++) {
     prevEnergy += solver.solveMode(dof[i],slices[i],0);
   }
-}
+  //Compute effective potential integrals
+  for(int iter = 1 ; iter< maxIter ; iter++) {
+    std::vector<std::vector<double>> effV = pot[0]->get1DSlices();
+    for(int i=0 ; i<potIterators.size() ; i++) {
+      for(int j=0 ; j<potIterators[i].size() ; j++) {
+        for(int k=0 ; k<potIterators[i][j].size() ; k++) {
+          for(int l=0 ; l<nPoints ; l++) {
+            int modeIndex = potIterators[i][j][k];
+            effV[modeIndex][l] += pot[i]->integralDriver(j,k,l);
+          }
+        }//k loop: mode indices for tuple
+      }//j loop: tuples 
+    }//i loop: potentials
 
-for(int iter = 1 ; iter< maxIter ; iter++) {
-std::vector<std::vector<double>> effV = pot[0]->get1DSlices();
-for(int i=0 ; i<potIterators.size() ; i++) {
-  for(int j=0 ; j<potIterators[i].size() ; j++) {
-    for(int k=0 ; k<potIterators[i][j].size() ; k++) {
-      for(int l=0 ; l<nPoints ; l++) {
-        int modeIndex = potIterators[i][j][k];
-        effV[modeIndex][l] += pot[i]->integralDriver(j,k,l);
-      }
-    }//k loop: mode indices for tuple
-  }//j loop: tuples 
-}//i loop: potentials
+    //Compute VSCF Energy
+    double energy = 0.0;
+    for(int i = 0 ; i< nModes ; i++) {
+      energy += solver.solveMode(dof[i],effV[i],0);
+    } 
+    for(int i=0 ; i<pot.size() ; i++) {
+      energy -= pot[i]->getVMinus();
+    }
 
-double energy = 0.0;
-for(int i = 0 ; i< nModes ; i++) {
-  if(i==z) {
-    energy += solver.solveMode(dof[i],effV[i],1);
-  } else {
-    energy += solver.solveMode(dof[i],effV[i],0);
+    //Check for Convergence
+    if(checkConvergence(dof,energy,nModes)) {
+      fprintf(results,"Converged at iteration %d\n",iter);
+      fprintf(results,"Ground-State VSCF Energy is: %.8f\n", energy*219474.6313708);
+      excitedEnergies[0] = energy;
+      break;
+    } else {
+      prevEnergy = energy;
+    }
+    if(iter == maxIter-1) {
+      print(results,"Ground-State VSCF failed to converge.\n");
+      excitedEnergies[0] = energy;
+    }
+  } 
+///////End Ground-State VSCF/////////
+  for(int i = 0 ; i< nModes ; i++) {
+  dof[i]->setGroundState();
   }
-}
-for(int i=0 ; i<pot.size() ; i++) {
-  energy -= pot[i]->getVMinus();
-}
-if(checkConvergence(dof,energy,nModes)) {
-fprintf(results,"Converged at iteration %d\n",iter);
-fprintf(results,"Mode %i Excited-State VSCF Energy is: %.8f\n",z,energy*219474.6313708);
-excitedEnergies[z+1] = energy;
-break;
-} else {
-prevEnergy = energy;
-}
-if(iter == maxIter-1) {
-fprintf(results,"Mode %i VSCF failed to converge.\n",z);
-excitedEnergies[z+1] = energy;
-}
-}
-dof[z]->setExcitedState();
-}
+/////////Excited-State VSCF//////////
+for(int z = 0 ; z< nModes ; z++) {
+  //Prepare 1D slices (effV guess)
+  prevEnergy = 0.0;
+  for(int i = 0 ; i< nModes ; i++) {
+    if(i==z) {
+      prevEnergy += solver.solveMode(dof[i],slices[i],1);
+    } else {
+      prevEnergy += solver.solveMode(dof[i],slices[i],0);
+    }
+  }
+
+  //Compute effective potential integrals
+  for(int iter = 1 ; iter< maxIter ; iter++) {
+    std::vector<std::vector<double>> effV = pot[0]->get1DSlices();
+    for(int i=0 ; i<potIterators.size() ; i++) {
+      for(int j=0 ; j<potIterators[i].size() ; j++) {
+        for(int k=0 ; k<potIterators[i][j].size() ; k++) {
+          for(int l=0 ; l<nPoints ; l++) {
+            int modeIndex = potIterators[i][j][k];
+            effV[modeIndex][l] += pot[i]->integralDriver(j,k,l);
+          }
+        }//k loop: mode indices for tuple
+      }//j loop: tuples 
+    }//i loop: potentials
+
+    //Compute VSCF Energy
+    double energy = 0.0;
+    for(int i = 0 ; i< nModes ; i++) {
+      if(i==z) {
+        energy += solver.solveMode(dof[i],effV[i],1);
+      } else {
+        energy += solver.solveMode(dof[i],effV[i],0);
+      }
+    }
+    for(int i=0 ; i<pot.size() ; i++) {
+      energy -= pot[i]->getVMinus();
+    }
+
+    //Check for Convergence
+    if(checkConvergence(dof,energy,nModes)) {
+      fprintf(results,"Converged at iteration %d\n",iter);
+      fprintf(results,"Mode %i Excited-State VSCF Energy is: %.8f\n",z,energy*219474.6313708);
+      excitedEnergies[z+1] = energy;
+      break;
+    } else {
+      prevEnergy = energy;
+    }
+    if(iter == maxIter-1) {
+      fprintf(results,"Mode %i VSCF failed to converge.\n",z);
+      excitedEnergies[z+1] = energy;
+    }
+  }
+  dof[z]->setExcitedState();
+}//z loop: excited mode
 ////////End Excited-State VSCF///////
 
 for(int i = 0 ; i< nModes ; i++) {
-dof[i]->updateWaveFcn(dof[i]->getGState());
-overlaps[i] = dof[i]->getOverlapEG();
+  dof[i]->updateWaveFcn(dof[i]->getGState());
+  overlaps[i] = dof[i]->getOverlapEG();
 }
 
 //DIPOLE CALCULATIONS
@@ -202,7 +208,6 @@ for(int comp = 0 ; comp< 3 ; comp++) {
       intensityComponents[3*b+comp] += dip[comp]->integrateSlice(dof[a],a,false)*overlaps[b];
     }
   }
-  printf("\n");
 
   for(int i=0 ; i<dipIterators.size()/3 ; i++) {
     for(int j=0 ; j<dipIterators[3*i+comp].size() ; j++) {
@@ -210,9 +215,7 @@ for(int comp = 0 ; comp< 3 ; comp++) {
         int modeIndex = dipIterators[3*i+comp][j][k];
         intensityComponents[3*modeIndex+comp] += dip[3*i+comp]->getDipole(j,k); 
       }//k loop: mode indices for tuple
-      printf("\n");
     }//j loop: tuples 
-    printf("\n");     
   }//i loop: potentials
 }//comp loop: 0=x, 1=y, 2=z
 
@@ -243,7 +246,7 @@ for(int i=0 ; i<nModes ; i++) {
   return 0;
 }
 
-//=====================================OTHER METHODS==========================================
+//=====================================HELPER METHODS==========================================
 void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints) {
   //read in frequencies 
   std::ifstream in("freq.dat",std::ios::in);
@@ -276,23 +279,4 @@ bool checkConvergence(std::vector<Mode*> dof, double energy, int nModes) {
       diff = temp;
   }
   return (diff < 1.0E-5) && (fabs(energy-prevEnergy)*219474.6313708 <0.5);
-}
-
-int fact(int n) {
-  if(n==0 || n==1)
-    return 1;
-  else
-    return n*fact(n-1);
-}
-
-void print(FILE* script, std::string line) {
-  fprintf(script,line.c_str());
-}
-
-int lengthCheck(int nMode, int coupling) {
-  int num = nMode;
-  int couplingFac = fact(coupling);
-  for(int i=1; i<coupling ; i++)
-    num *= (nMode-i);
-  return num/couplingFac;
 }

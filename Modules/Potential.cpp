@@ -20,12 +20,12 @@ std::string appendKey(int modeIndex) {
 
 //////////////////////////////////////////////START CLASS//////////////////////////////////////////////////
 Potential::Potential(std::string fileName, int _minDim, int _dimension, int _nModes, int _nPoints) {
+ dim = _dimension;
  if(_minDim == 1 && dim != 1) {
     minDim = 2;
   } else {
     minDim = _minDim;
   }
-  dim = _dimension;
   nModes = _nModes;
   nPoints = _nPoints;
   potLength = (int) pow(_nPoints,_dimension);
@@ -286,13 +286,17 @@ std::vector<std::vector<double>> Potential::get1DSlices() { return slices; }
 //Making the assumption that the lowest degree Potential is a complete set
 std::vector<std::vector<int>> Potential::readPot(std::vector<Mode*>& dof, bool getSlices) {
   //Find out how many tuples are in the file
-  char tupleFile[100];
-  sprintf(tupleFile,"%i.dat",dim);
+  //char tupleFile[20] = {0};
+  char *tupleFile = new char[20];
+  snprintf(tupleFile,19,"%i.dat",dim);
+  //sprintf(tupleFile,"%i.dat",dim);
+  //std::string tupleFile = std::to_string(dim) + ".dat";
   std::ifstream in(tupleFile,std::ios::in);
   if(!in) {
     printf("Error: %s could not be opened\n",tupleFile);
     exit(0);
   }
+  delete[] tupleFile;
   std::string line;
   std::vector<std::vector<int>> tupleIndices;
   while(std::getline(in,line)) {
