@@ -18,6 +18,7 @@
 
 void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints);
 bool checkConvergence(std::vector<Mode*> dof, double energy, int nModes);
+void print(FILE* script, std::string line);
 
 double prevEnergy = 0.0;
 
@@ -279,4 +280,7 @@ bool checkConvergence(std::vector<Mode*> dof, double energy, int nModes) {
       diff = temp;
   }
   return (diff < 1.0E-5) && (fabs(energy-prevEnergy)*219474.6313708 <0.5);
+}
+void print(FILE* script, std::string line) {
+  fprintf(script,line.c_str());
 }
