@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "Mode.h"
 #include "../UtilityFunc/ghQuad.h"
+#include "../UtilityFunc/aux.h"
 
 double pi =  3.1415926535897932384626433832795;
 double au_to_wn = 219474.6313708;
@@ -35,7 +36,12 @@ Mode::Mode(double _omega, int _nPoints) {
 
     //Dipoles: Mode is excited
     excited = false;
-    //integrationMode = 
+
+    //DIIS Set-up
+    maxDiisError = 0.0;
+    diis_subspace = 10;
+    Fsave.resize(diis_subspace);
+    Esave.resize(diis_subspace); 
 }
 
 Mode::~Mode() {
@@ -47,6 +53,10 @@ Mode::~Mode() {
   delete[] norm;
   //delete[] groundState;
   delete[] excitedState;
+  for(int i=0 ; i<diis_subspace ; i++) {
+    delete[] Fsave[i];
+    delete[] Esave[i];
+  }
 }
 
 //===================================================================
@@ -95,6 +105,8 @@ int Mode::getNPoints() {return nPoints;}
 double Mode::getWeight(int index) {return weights[index];}
 double Mode::getHerm(int herm, int point) {return hermiteEval[herm*nPoints+point];}
 double Mode::getNorm(int index) {return norm[index];}
+double Mode::getDIISError() {return maxDiisError;}
+
 //double Mode::getPoint(int index) {return points[index]/(sqrt(alpha));}
 
 void Mode::setExcited(bool status) {excited = status;}
@@ -116,4 +128,64 @@ double Mode::getIntegralComponent(int point) {
   }
 
   return integralComponent*integralComponent;
+}
+//========================================DIIS Shenanigans=========================================
+void Mode::diis(double *F, double *E, int iter) {
+  //Make copy of current Fock Matrix to save, the one passed in can be modified
+  double *Fcopy = new double[nBasis*nBasis];
+  std::copy(F,F+(nBasis*nBasis),Fcopy);
+  setMaxElement(E);
+
+  int index;
+  if(iter>=0 && iter<diis_subspace) index = iter+1;
+  if(iter>=diis_subspace) { 
+    index = diis_subspace;
+    delete[] Fsave[iter%diis_subspace];
+    delete[] Esave[iter%diis_subspace];
+  }
+    Fsave[iter%diis_subspace] = Fcopy;
+    Esave[iter%diis_subspace] = E; 
+
+  //Extrapolate the Fock out of this thing -Justin
+  if(iter>1) { //why not iter>0?
+    //set up matrix [B11 B12 B13 ... -1.0]
+    //              [B21 B22 B23 ... -1.0]
+    //              [....................]
+    //              [-1.0-1.0-1.0 ... 0.0]
+    double *A = new double[(index+1)*(index+1)];
+    for(int i=0 ; i<index+1 ; i++) A[i*(index+1)+index] = -1.0;
+    for(int i=0 ; i<index+1 ; i++) A[index*(index+1)+i] = -1.0;
+    A[index*(index+1)+index] = 0.0;
+    for(int i=0 ; i<index ; i++) {
+      for(int j=0 ; j<index ; j++) {
+        for(int k=0 ; k<nBasis*nBasis ; k++) {
+          A[i*(index+1)+j] = Esave[i][nBasis*nBasis+k]*Esave[j][nBasis*nBasis+k];//Bij
+        }
+      }
+    }
+    
+    //solve for regression coeff
+    double *B = new double[index+1];
+    for(int i=0 ; i<index+1 ; i++) B[i] = 0.0;
+    B[index] = -1.0;
+    linsolver(A,B,index+1);
+
+    //use coefficients for new Fock matrix
+    for(int i=0 ; i<index ; i++) {
+      for(int j=0 ; j<nBasis*nBasis ; j++) {
+        F[j] = 0.0;
+        F[j] += B[i]*Fsave[i][nBasis*nBasis+j];
+      }
+    }
+    delete[] A;
+    delete[] B;
+  }
+}  
+
+void Mode::setMaxElement(double *array) {
+  double max = 0.0;
+  for(int i=0 ; i<nBasis*nBasis ; i++) {
+    if (max<array[i]) max=array[i];
+  }
+  maxDiisError = max;
 }

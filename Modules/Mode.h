@@ -1,6 +1,7 @@
 #ifndef MODE_H
 #define MODE_H
 #include <stdbool.h>
+#include <vector>
 
 class Mode {
   public:
@@ -23,12 +24,17 @@ class Mode {
     double getHerm(int, int);
     double getNorm(int);
     double getIntegralComponent(int);
-    double getPoint(int);
+    //double getPoint(int);
+    double getDIISError();
+    void diis(double*,double*,int);
+    void setMaxElement(double*);
   private:
     double alpha;
     double omega;
     int nPoints;
     int nBasis;
+    double maxDiisError;
+    int diis_subspace;
     double* waveFcn;
     double* oldWaveFcn;
     double* points;
@@ -39,6 +45,9 @@ class Mode {
     double* groundState;
     double* excitedState;
     bool excited;
+
+    std::vector<double*> Fsave;
+    std::vector<double*> Esave; 
 };
 
 #endif

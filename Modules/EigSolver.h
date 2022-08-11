@@ -6,12 +6,14 @@ class Mode;
 class EigSolver {
     int nPoints;
     int nBasis;
+    int conv;
     double* T;
+    double* density;
     void buildTmat();
   public:
-    EigSolver(int);
+    EigSolver(int,int);
     ~EigSolver();
-    double solveMode(Mode*, std::vector<double>, int);
+    double solveMode(Mode*, std::vector<double>, int, int);
 };
 
 #endif

@@ -125,39 +125,28 @@ void diagonalize(double* pEigvecs, double* pEigvals, int n){
   free((void*)work);
 }
 //=============================================
+void linsolver(double* A, double* B, int N)
+{
 
+        //returns solution in B.
+        int i;
+        int NRS = 1;
+        int LDA = N;
+        int LDB = N;
+        double Berr[1];
+        double X[N];
+        int IPIV[N];
+        int IWork[N];
+        double Ferr[1];
+        double Work[4*N];
+        double AF[LDA*N];
+        double RCond, R, C;
+        char fact = 'N';
+        char trans= 'T';
+        char equed = 'X';
+        int info;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        dgesvx_(&fact,&trans,&N,&NRS,A,&LDA,AF,&LDA,IPIV,&equed,&R,&C,B,&LDB,X,&LDB,&RCond,Ferr,Berr,Work,IWork,&info);
+        //printf("Rcond = % -10.16e \n",RCond); 
+        for(i=0; i<N; i++) B[i] = X[i];
+}

@@ -421,6 +421,7 @@ for(int d = 3; d > 0; d--){
   delete[] stored_values;
   for(int i=0 ; i<len ; i++) {delete[] dummy[i];}
   delete[] dummy;
+  delete[] looper;
 
 //for(int q = 0; q <len;q++){printf("\n%f %i\n",pot4[q],q);}
 

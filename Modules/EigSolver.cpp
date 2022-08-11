@@ -6,17 +6,22 @@
 #include "EigSolver.h"
 #include "../UtilityFunc/aux.h"
 
-void buildTmat();
-
-EigSolver::EigSolver(int _nPoints) {
+EigSolver::EigSolver(int _nPoints, int _conv) {
   nPoints = _nPoints;
   nBasis = nPoints-1;
   T = new double[(nBasis+2)*(nBasis+2)];
   buildTmat();
+
+  conv = _conv;
+  //conv: 1=roothaan 2=diis
+  if(conv==2)
+    density = new double[nBasis*nBasis]; 
 }
 
 EigSolver::~EigSolver(){
   delete[] T;
+  if(conv==2) 
+    delete[] density;
 }
 
 //==============================================================
@@ -44,7 +49,7 @@ void EigSolver::buildTmat() {
 }
 
 //===============================================================
-double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state) {
+double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int iter) {
     double* H = new double[nBasis*nBasis];
     for(int i=0 ; i<nBasis ; i++) {
       for(int j=0 ; j<nBasis ; j++) {
@@ -55,6 +60,19 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state) {
         }
         H[i*nBasis+j] = mode->getOmega()*-0.5*T[i*(nBasis+2)+j]+VMat;
       }
+    }
+    
+    //Compute Error Vector
+    if(iter >= 0 && conv == 2) { 
+      double *fd = new double[nBasis*nBasis];
+      double *df = new double[nBasis*nBasis]; 
+      double *error = new double[nBasis*nBasis];
+      ABmult(fd,H,density,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
+      ABmult(df,density,H,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
+      for(int i=0 ; i<nBasis*nBasis ; i++) error[i] = fd[i]-df[i]; 
+      mode->diis(H,error,iter);
+      delete[] fd;
+      delete[] df;
     }
 /*
     for(int i=0 ; i<nBasis ; i++) {
@@ -75,6 +93,16 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state) {
     }
     mode->updateWaveFcn(newWaveFcn);
       double evalNeeded = evals[state];
+
+    //DIIS: Build Density Matrix
+    if(conv == 2) {
+      for(int i=0 ; i<nBasis ; i++) {
+        for(int j=0 ; j<nBasis ; j++) {
+          density[i*nBasis+j] = newWaveFcn[i]*newWaveFcn[j];
+        }
+      }
+    }
+
 /*
     for(int i=0 ; i<nBasis ; i++) {
       printf("EVALS: %.8f\n",evals[i]*219474.6313708);
