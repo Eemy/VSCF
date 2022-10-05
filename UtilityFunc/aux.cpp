@@ -150,3 +150,15 @@ void linsolver(double* A, double* B, int N)
         //printf("Rcond = % -10.16e \n",RCond); 
         for(i=0; i<N; i++) B[i] = X[i];
 }
+
+void printmat(double* mat, int n, int m)
+{
+int i,j;
+for(i=0; i<n; i++){
+  for(j=0; j<m; j++){
+    printf("% -10.6e  ",mat[i*m+j]);
+  }
+ printf("\n");
+ }
+printf("\n");
+}

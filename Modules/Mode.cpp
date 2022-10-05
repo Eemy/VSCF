@@ -10,7 +10,7 @@ double pi =  3.1415926535897932384626433832795;
 double au_to_wn = 219474.6313708;
 double mass_au  = 1822.8884848961380701;
 
-Mode::Mode(double _omega, int _nPoints) {
+Mode::Mode(double _omega, int _nPoints, int _conv) {
     omega = _omega/au_to_wn;
     nPoints = _nPoints;
     nBasis = nPoints-1;
@@ -36,12 +36,16 @@ Mode::Mode(double _omega, int _nPoints) {
 
     //Dipoles: Mode is excited
     excited = false;
-
+    
+    conv = _conv;
     //DIIS Set-up
-    maxDiisError = 0.0;
-    diis_subspace = 10;
-    Fsave.resize(diis_subspace);
-    Esave.resize(diis_subspace); 
+    if(conv == 2) {
+      maxDiisError = 0.0;
+      diis_subspace = 6;
+      Fsave.resize(diis_subspace);
+      Esave.resize(diis_subspace); 
+      density = new double[nBasis*nBasis];
+    }
 }
 
 Mode::~Mode() {
@@ -57,6 +61,8 @@ Mode::~Mode() {
     delete[] Fsave[i];
     delete[] Esave[i];
   }
+  if(conv == 2)
+    delete[] density;
 }
 
 //===================================================================
@@ -73,9 +79,20 @@ void Mode::setExcitedState() {
 }
 
 void Mode::updateWaveFcn(double* newWaveFcn) {
-  delete[] oldWaveFcn; //deallocate original memory block
+  if(oldWaveFcn != NULL)
+    delete[] oldWaveFcn; //deallocate original memory block
   oldWaveFcn = waveFcn; //move pointer to another memory block
   waveFcn = newWaveFcn; 
+  if(conv == 2)
+    updateDensity();
+}
+
+void Mode::updateDensity() {
+  for(int i=0 ; i<nBasis ; i++) {
+    for(int j=0 ; j<nBasis ; j++) {
+      density[i*nBasis+j] = waveFcn[i]*waveFcn[j];
+    }
+  }
 }
 
 double Mode::computeMaxDiff() {
@@ -106,6 +123,7 @@ double Mode::getWeight(int index) {return weights[index];}
 double Mode::getHerm(int herm, int point) {return hermiteEval[herm*nPoints+point];}
 double Mode::getNorm(int index) {return norm[index];}
 double Mode::getDIISError() {return maxDiisError;}
+double* Mode::getDensity() {return density;}
 
 //double Mode::getPoint(int index) {return points[index]/(sqrt(alpha));}
 
@@ -131,6 +149,7 @@ double Mode::getIntegralComponent(int point) {
 }
 //========================================DIIS Shenanigans=========================================
 void Mode::diis(double *F, double *E, int iter) {
+  printf("Iteration: %d\n",iter);  
   //Make copy of current Fock Matrix to save, the one passed in can be modified
   double *Fcopy = new double[nBasis*nBasis];
   std::copy(F,F+(nBasis*nBasis),Fcopy);
@@ -156,31 +175,34 @@ void Mode::diis(double *F, double *E, int iter) {
     for(int i=0 ; i<index+1 ; i++) A[i*(index+1)+index] = -1.0;
     for(int i=0 ; i<index+1 ; i++) A[index*(index+1)+i] = -1.0;
     A[index*(index+1)+index] = 0.0;
+
     for(int i=0 ; i<index ; i++) {
       for(int j=0 ; j<index ; j++) {
+        A[i*(index+1)+j] = 0.0;
         for(int k=0 ; k<nBasis*nBasis ; k++) {
-          A[i*(index+1)+j] = Esave[i][nBasis*nBasis+k]*Esave[j][nBasis*nBasis+k];//Bij
+          A[i*(index+1)+j] += Esave[i][k]*Esave[j][k];//Bij
         }
       }
     }
-    
+    printmat(A,index+1,index+1);
+     
     //solve for regression coeff
     double *B = new double[index+1];
     for(int i=0 ; i<index+1 ; i++) B[i] = 0.0;
     B[index] = -1.0;
     linsolver(A,B,index+1);
 
-    //use coefficients for new Fock matrix
+   //use coefficients for new Fock matrix
+    for(int i=0 ; i<nBasis*nBasis ; i++) F[i] = 0.0;
     for(int i=0 ; i<index ; i++) {
       for(int j=0 ; j<nBasis*nBasis ; j++) {
-        F[j] = 0.0;
-        F[j] += B[i]*Fsave[i][nBasis*nBasis+j];
+        F[j] += B[i]*Fsave[i][j];
       }
     }
     delete[] A;
     delete[] B;
   }
-}  
+}
 
 void Mode::setMaxElement(double *array) {
   double max = 0.0;

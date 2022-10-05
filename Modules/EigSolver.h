@@ -8,7 +8,6 @@ class EigSolver {
     int nBasis;
     int conv;
     double* T;
-    double* density;
     void buildTmat();
   public:
     EigSolver(int,int);

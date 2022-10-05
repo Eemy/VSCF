@@ -12,16 +12,12 @@ EigSolver::EigSolver(int _nPoints, int _conv) {
   T = new double[(nBasis+2)*(nBasis+2)];
   buildTmat();
 
-  conv = _conv;
   //conv: 1=roothaan 2=diis
-  if(conv==2)
-    density = new double[nBasis*nBasis]; 
+  conv = _conv;
 }
 
 EigSolver::~EigSolver(){
   delete[] T;
-  if(conv==2) 
-    delete[] density;
 }
 
 //==============================================================
@@ -61,9 +57,12 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
         H[i*nBasis+j] = mode->getOmega()*-0.5*T[i*(nBasis+2)+j]+VMat;
       }
     }
-    
+    //printf("Hamiltonian\n"); 
+    //printmat(H,nBasis,nBasis);    
+ 
     //Compute Error Vector
     if(iter >= 0 && conv == 2) { 
+      double *density = mode->getDensity();
       double *fd = new double[nBasis*nBasis];
       double *df = new double[nBasis*nBasis]; 
       double *error = new double[nBasis*nBasis];
@@ -74,14 +73,7 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
       delete[] fd;
       delete[] df;
     }
-/*
-    for(int i=0 ; i<nBasis ; i++) {
-      for(int j=0 ; j<nBasis ; j++) {
-        printf("H: %.8f\n",H[i*nBasis+j]);
-      }
-      printf("\n");
-    }    
-*/
+
     double* evals = new double[nBasis];
     diagonalize(H,evals,nBasis); //Hamiltonian becomes eigvec matrix
   
@@ -92,33 +84,17 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
       newWaveFcn[i] = H[nBasis*state+i];
     }
     mode->updateWaveFcn(newWaveFcn);
-      double evalNeeded = evals[state];
-
-    //DIIS: Build Density Matrix
-    if(conv == 2) {
-      for(int i=0 ; i<nBasis ; i++) {
-        for(int j=0 ; j<nBasis ; j++) {
-          density[i*nBasis+j] = newWaveFcn[i]*newWaveFcn[j];
-        }
-      }
-    }
+    double evalNeeded = evals[state];
 
 /*
     for(int i=0 ; i<nBasis ; i++) {
       printf("EVALS: %.8f\n",evals[i]*219474.6313708);
-    }
-    for(int i=0 ; i<nBasis ; i++) {
-      for(int j=0 ; j<nBasis ; j++) {
-        printf("EVECS: %.8f\n",evecs[i*nBasis+j]);
-      }
-      printf("\n");
     }
 */
     //printf("EigVal:\n%.8f\n",evalNeeded*219474.6313708);
 
     delete[] H;
     delete[] evals;
-//    delete[] evecs;
     return evalNeeded;
 }
 //===============================================================

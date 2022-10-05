@@ -5,7 +5,7 @@
 
 class Mode {
   public:
-    Mode(double, int);
+    Mode(double, int, int);
     ~Mode();
     void setGroundState(); 
     void setExcitedState();
@@ -26,15 +26,16 @@ class Mode {
     double getIntegralComponent(int);
     //double getPoint(int);
     double getDIISError();
+    double *getDensity();
     void diis(double*,double*,int);
-    void setMaxElement(double*);
   private:
+    void setMaxElement(double*);
+    void updateDensity();
+
     double alpha;
     double omega;
     int nPoints;
     int nBasis;
-    double maxDiisError;
-    int diis_subspace;
     double* waveFcn;
     double* oldWaveFcn;
     double* points;
@@ -46,8 +47,12 @@ class Mode {
     double* excitedState;
     bool excited;
 
+    int conv;
     std::vector<double*> Fsave;
     std::vector<double*> Esave; 
+    double* density;
+    double maxDiisError;
+    int diis_subspace;
 };
 
 #endif

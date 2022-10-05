@@ -16,7 +16,7 @@
 #define Na       6.02214179E23 
 //////////////////////////////////////////////////////////////////////
 
-void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints);
+void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv);
 bool checkConvergence(std::vector<Mode*> dof, double energy, int conv);
 void print(FILE* script, std::string line);
 
@@ -24,7 +24,7 @@ double prevEnergy = 0.0;
 
 int main(int argc, char* argv[]) {
   const int defaultLength = 9;
-  int maxIter = 100;
+  int maxIter = 500;
 
   if(argc < defaultLength) { 
     printf("Error: <Nmodes> <Nquad> <1-Roothaan 2-Diis> <EnergyFile> <DipoleXFile> <DipoleYFile> <DipoleZFile> <CouplingDegree> [<EnergyFile> <Dx> <Dy> <Dz> <dim> ...]\n");
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
   int nModes = atoi(argv[1]); //arg1
   int nPoints = atoi(argv[2]); //arg2
   int conv = atoi(argv[3]);
-  if(conv != 1 || conv != 2) //default is roothaan for bad input
+  if(conv != 1 && conv != 2) //default is roothaan for bad input
     conv = 1;
   std::vector<std::string> potFileNames;
   potFileNames.push_back(argv[4]); //arg4
@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
 /////////////////////////Create Mode, EigSolver, Potential Objects////////////////////////
   std::vector<Mode*> dof;
   std::vector<double> freq;
-  readin(dof,freq,nModes,nPoints); 
+  readin(dof,freq,nModes,nPoints, conv); 
   EigSolver solver(nPoints,conv);
 
   std::vector<Potential*> pot;
@@ -118,6 +118,7 @@ int main(int argc, char* argv[]) {
     for(int i = 0 ; i< nModes ; i++) {
       energy += solver.solveMode(dof[i],effV[i],0,iter);//iter instead of -1 allow DIIS to occur
     } 
+
     for(int i=0 ; i<pot.size() ; i++) {
       energy -= pot[i]->getVMinus();
     }
@@ -138,7 +139,7 @@ int main(int argc, char* argv[]) {
   } 
 ///////End Ground-State VSCF/////////
   for(int i = 0 ; i< nModes ; i++) {
-  dof[i]->setGroundState();
+    dof[i]->setGroundState();
   }
 /////////Excited-State VSCF//////////
 for(int z = 0 ; z< nModes ; z++) {
@@ -175,6 +176,7 @@ for(int z = 0 ; z< nModes ; z++) {
         energy += solver.solveMode(dof[i],effV[i],0,iter);
       }
     }
+
     for(int i=0 ; i<pot.size() ; i++) {
       energy -= pot[i]->getVMinus();
     }
@@ -251,7 +253,7 @@ for(int i=0 ; i<nModes ; i++) {
 }
 
 //=====================================HELPER METHODS==========================================
-void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints) {
+void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv) {
   //read in frequencies 
   std::ifstream in("freq.dat",std::ios::in);
   if(!in) {
@@ -271,7 +273,7 @@ void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoin
 
   //Create Mode objects and return
   for(int i=0 ; i<N ; i++) {
-    dof.push_back(new Mode(freq[i],nPoints));
+    dof.push_back(new Mode(freq[i],nPoints,conv));
   }    
 } 
 
@@ -293,7 +295,8 @@ bool checkConvergence(std::vector<Mode*> dof, double energy, int conv) {
       if(dof[i]->getDIISError() > max)
         max = dof[i]->getDIISError();
     }
-    return (max < 1.0e-14);
+    printf("ConvCheck: %.12f\n",max);
+    return (max < 1.0e-10);
   }
 }
 void print(FILE* script, std::string line) {
