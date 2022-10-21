@@ -93,7 +93,7 @@ int main(int argc, char* argv[]) {
   std::vector<double> overlaps(nModes);
 
   //Open results file once all set-up is completed
-  FILE *results = fopen("eemVSCF_new.dat","w");
+  FILE *results = fopen("eemVSCF_corr.dat","w");
 //====================================Begin VSCF============================================
   //Prepare: eigensolver on pure 1D slices for each mode
   for(int i = 0 ; i< nModes ; i++) {
@@ -145,6 +145,7 @@ int main(int argc, char* argv[]) {
 for(int z = 0 ; z< nModes ; z++) {
   //Prepare 1D slices (effV guess)
   prevEnergy = 0.0;
+  dof[z]->setStates(1,1); //excite mode
   for(int i = 0 ; i< nModes ; i++) {
     if(i==z) {
       prevEnergy += solver.solveMode(dof[i],slices[i],1,-1);
@@ -196,11 +197,12 @@ for(int z = 0 ; z< nModes ; z++) {
     }
   }
   dof[z]->setExcitedState();
+  dof[z]->setStates(0,0);
 }//z loop: excited mode
 ////////End Excited-State VSCF///////
 
 for(int i = 0 ; i< nModes ; i++) {
-  dof[i]->updateWaveFcn(dof[i]->getGState());
+  dof[i]->useVSCFStates(true);
   overlaps[i] = dof[i]->getOverlapEG();
 }
 
@@ -208,7 +210,9 @@ for(int i = 0 ; i< nModes ; i++) {
 for(int comp = 0 ; comp< 3 ; comp++) {
   //Integrate all 1D pieces
   for(int a = 0 ; a< nModes ; a++) {
+    dof[a]->setStates(1,0);
     intensityComponents[3*a+comp] += dip[comp]->integrateSlice(dof[a],a,true);
+    dof[a]->setStates(0,0);
     for(int b = a+1 ; b< nModes ; b++) {
       intensityComponents[3*a+comp] += dip[comp]->integrateSlice(dof[b],b,false)*overlaps[a];
       intensityComponents[3*b+comp] += dip[comp]->integrateSlice(dof[a],a,false)*overlaps[b];
@@ -219,7 +223,9 @@ for(int comp = 0 ; comp< 3 ; comp++) {
     for(int j=0 ; j<dipIterators[3*i+comp].size() ; j++) {
       for(int k=0 ; k<dipIterators[3*i+comp][j].size() ; k++) {
         int modeIndex = dipIterators[3*i+comp][j][k];
+        dof[modeIndex]->setStates(1,0);
         intensityComponents[3*modeIndex+comp] += dip[3*i+comp]->getDipole(j,k); 
+        dof[modeIndex]->setStates(0,0);
       }//k loop: mode indices for tuple
     }//j loop: tuples 
   }//i loop: potentials

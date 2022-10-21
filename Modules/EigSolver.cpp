@@ -78,14 +78,8 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
     diagonalize(H,evals,nBasis); //Hamiltonian becomes eigvec matrix
   
     //Update and Return Requested Information
-    double* newWaveFcn = new double[nBasis];
-    for(int i=0 ; i<nBasis ; i++) {
-      //printf("%.8f\n",H[nBasis*state+i]);
-      newWaveFcn[i] = H[nBasis*state+i];
-    }
-    mode->updateWaveFcn(newWaveFcn);
     double evalNeeded = evals[state];
-
+    mode->updateAllPsi_AllE(H,evals);
 /*
     for(int i=0 ; i<nBasis ; i++) {
       printf("EVALS: %.8f\n",evals[i]*219474.6313708);
@@ -93,8 +87,8 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
 */
     //printf("EigVal:\n%.8f\n",evalNeeded*219474.6313708);
 
-    delete[] H;
-    delete[] evals;
+//    delete[] H;
+//    delete[] evals;
     return evalNeeded;
 }
 //===============================================================

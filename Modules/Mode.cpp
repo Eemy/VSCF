@@ -14,18 +14,25 @@ Mode::Mode(double _omega, int _nPoints, int _conv) {
     omega = _omega/au_to_wn;
     nPoints = _nPoints;
     nBasis = nPoints-1;
-    //alpha = m*omega;
 
-    waveFcn = new double[nBasis];
-    oldWaveFcn = NULL;
+    //Hold modals (VMP2)
+    energies = NULL; 
+    waveAll = NULL;
+    waveAll_prev = NULL;
+    //Hold VSCF states
+    vscfPsi = new double[nBasis*2];
+
+    //Control which states to use
+    vscfStates = false; //mainly for dipoles
+    bra = 0;
+    ket = 0;
+    
+    //Set up gauher and norm arrays 
     points = new double[nPoints];
     weights = new double[nPoints];
     hermiteEval = new double[nBasis*nPoints];
     norm = new double[nBasis];
-    groundState = NULL;
-    excitedState = NULL;
 
-    //Set up some of the arrays
     gauher(points,weights,nPoints);
     for(int i=0 ; i<nBasis ; i++) {
       for(int j=0 ; j<nPoints ; j++) {
@@ -34,11 +41,8 @@ Mode::Mode(double _omega, int _nPoints, int _conv) {
       norm[i] = 1/(sqrt(pow(2.0,i)*factorial(i)))*pow(1/pi,0.25);
     }
 
-    //Dipoles: Mode is excited
-    excited = false;
-    
-    conv = _conv;
     //DIIS Set-up
+    conv = _conv;
     if(conv == 2) {
       maxDiisError = 0.0;
       diis_subspace = 6;
@@ -49,14 +53,18 @@ Mode::Mode(double _omega, int _nPoints, int _conv) {
 }
 
 Mode::~Mode() {
-  delete[] waveFcn;
-  delete[] oldWaveFcn;
+//  delete[] waveFcn;
+//  delete[] oldWaveFcn;
   delete[] weights;
   delete[] points;
   delete[] hermiteEval;
   delete[] norm;
-  //delete[] groundState;
-  delete[] excitedState;
+//  delete[] groundState;
+//  delete[] excitedState;
+  delete[] vscfPsi;
+  delete[] waveAll;
+  delete[] waveAll_prev;
+  delete[] energies;
   for(int i=0 ; i<diis_subspace ; i++) {
     delete[] Fsave[i];
     delete[] Esave[i];
@@ -67,30 +75,33 @@ Mode::~Mode() {
 
 //===================================================================
 void Mode::setGroundState() {
-  groundState = new double[nBasis];
   for(int i=0 ; i<nBasis; i++)
-    groundState[i] = waveFcn[i]; 
+    vscfPsi[i] = waveAll[i]; 
 }
 
 void Mode::setExcitedState() {
-  excitedState = new double[nBasis];
   for(int i=0 ; i<nBasis; i++)
-    excitedState[i] = waveFcn[i]; 
+    vscfPsi[nBasis+i] = waveAll[nBasis+i]; 
 }
 
-void Mode::updateWaveFcn(double* newWaveFcn) {
-  if(oldWaveFcn != NULL)
-    delete[] oldWaveFcn; //deallocate original memory block
-  oldWaveFcn = waveFcn; //move pointer to another memory block
-  waveFcn = newWaveFcn; 
+void Mode::updateAllPsi_AllE(double* newPsi, double* newE) {
+  if(waveAll_prev != NULL)
+    delete[] waveAll_prev; 
+  if(waveAll != NULL)
+    waveAll_prev = waveAll; //pass pointer of original memory block
+  if(energies != NULL)
+    delete[] energies; //deallocate original memory block
+  waveAll = newPsi; //move pointer to another memory block
+  energies = newE; 
+
   if(conv == 2)
-    updateDensity();
+    updateDensity(); 
 }
 
 void Mode::updateDensity() {
   for(int i=0 ; i<nBasis ; i++) {
     for(int j=0 ; j<nBasis ; j++) {
-      density[i*nBasis+j] = waveFcn[i]*waveFcn[j];
+      density[i*nBasis+j] = waveAll[bra*nBasis+i]*waveAll[bra*nBasis+j];
     }
   }
 }
@@ -98,7 +109,7 @@ void Mode::updateDensity() {
 double Mode::computeMaxDiff() {
   double diff = 0.0;
   for(int i=0 ; i<nBasis ; i++) {
-    double temp = fabs(fabs(oldWaveFcn[i])-fabs(waveFcn[i]));
+    double temp = fabs(fabs(waveAll_prev[bra*nBasis+i])-fabs(waveAll[bra*nBasis+i]));
     if(temp > diff)
       diff = temp;
   }
@@ -106,46 +117,60 @@ double Mode::computeMaxDiff() {
 }
 
 //============================GETTERS/SETTERS================================
-double* Mode::getWaveFcn() {return waveFcn;}
-double* Mode::getGState() {return groundState;}
-double* Mode::getEState() {return excitedState;}
+//double* Mode::getWaveFcn() {return waveFcn;}
+//double* Mode::getGState() {return groundState;}
+//double* Mode::getEState() {return excitedState;}
 double Mode::getOverlapEG() {
   double integral = 0.0;
   for(int i=0 ; i<nBasis ; i++)
-    integral += groundState[i]*excitedState[i];
+    integral += vscfPsi[i]*vscfPsi[nBasis+i];
   return integral;
 }
+
+double* Mode::getModal(int state) {
+  double* modal = new double[nBasis];
+  for(int i=0 ; i<nBasis ; i++) 
+    modal[i] = waveAll[nBasis*state+i];
+  return modal;
+}
+double Mode::getEModal(int state) {return energies[state];}
+
 //double Mode::getAlpha() {return alpha;}
-double Mode::getOmega() {return omega;}
 //double Mode::getMass() {return m;}
+//double Mode::getPoint(int index) {return points[index]/(sqrt(alpha));}
+double Mode::getOmega() {return omega;}
 int Mode::getNPoints() {return nPoints;}
 double Mode::getWeight(int index) {return weights[index];}
 double Mode::getHerm(int herm, int point) {return hermiteEval[herm*nPoints+point];}
 double Mode::getNorm(int index) {return norm[index];}
 double Mode::getDIISError() {return maxDiisError;}
 double* Mode::getDensity() {return density;}
-
-//double Mode::getPoint(int index) {return points[index]/(sqrt(alpha));}
-
-void Mode::setExcited(bool status) {excited = status;}
+void Mode::setStates(int _bra, int _ket) {bra = _bra; ket = _ket;}
+void Mode::useVSCFStates(bool use) {vscfStates = use;}
 //====================FOR EFFECTIVE POTENTIAL=======================
 double Mode::getIntegralComponent(int point) {
-  //Dipole: bra(excited) and ket(ground) different
-  if(excited) {
-    double groundIntegral = 0.0;
-    double excitedIntegral = 0.0;
-    for(int i=0 ; i<nBasis ; i++) {
-      groundIntegral += hermiteEval[i*nPoints+point]*norm[i]*groundState[i];
-      excitedIntegral += hermiteEval[i*nPoints+point]*norm[i]*excitedState[i];
+  if(vscfStates) {
+    if(bra > 1 || ket > 1) {
+      printf("Error: No existing VSCF states above 1 quanta of excitation.\n"); 
+      exit(0);
     }
-    return excitedIntegral*groundIntegral;
-  }
-  double integralComponent = 0.0;
-  for(int i=0 ; i<nBasis ; i++) {
-    integralComponent += hermiteEval[i*nPoints+point]*norm[i]*waveFcn[i];
+    double braIntegral = 0.0;
+    double ketIntegral = 0.0;
+    for(int i=0 ; i<nBasis ; i++) {
+      braIntegral += hermiteEval[i*nPoints+point]*norm[i]*vscfPsi[bra*nBasis+i];
+      ketIntegral += hermiteEval[i*nPoints+point]*norm[i]*vscfPsi[ket*nBasis+i];
+    }
+    return braIntegral*ketIntegral;
   }
 
-  return integralComponent*integralComponent;
+  //Else use modal states
+  double braIntegral = 0.0;
+  double ketIntegral = 0.0;
+  for(int i=0 ; i<nBasis ; i++) {
+    braIntegral += hermiteEval[i*nPoints+point]*norm[i]*waveAll[bra*nBasis+i];
+    ketIntegral += hermiteEval[i*nPoints+point]*norm[i]*waveAll[ket*nBasis+i];
+  }
+  return braIntegral*ketIntegral;
 }
 //========================================DIIS Shenanigans=========================================
 void Mode::diis(double *F, double *E, int iter) {

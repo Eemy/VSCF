@@ -18,7 +18,7 @@ std::string appendKey(int modeIndex) {
   return std::to_string(modeIndex);
 }
 
-//////////////////////////////////////////////START CLASS//////////////////////////////////////////////////
+//============================START CLASS============================
 Potential::Potential(std::string fileName, int _minDim, int _dimension, int _nModes, int _nPoints) {
  dim = _dimension;
  if(_minDim == 1 && dim != 1) {
@@ -69,14 +69,14 @@ Potential::Tuplet::~Tuplet() {
   delete couplingRemover;
 }
 
-//===================================================Nest within a nest=====================================================
+//============================Nest within a nest============================
 Potential::Tuplet::SubTup::SubTup(std::vector<int> _subspaceSet, std::vector<Mode*> _modeSet, std::vector<double> _potSet) {
   subspaceSet = _subspaceSet;
   modeSet = _modeSet;
   potSet = _potSet; 
 }
 Potential::Tuplet::SubTup::~SubTup() {}
-//=====================================================END================================================================
+//===================================END====================================
 
 void Potential::Tuplet::setUpDriver(std::unordered_map<std::string,int>& checker) {
   setUp(dim,pot,checker,indices,subspaces,modeSubset);
@@ -198,8 +198,8 @@ double Potential::Tuplet::getEffVIntegral(int modeSelection, int modeSlice) {
 }
 
 double Potential::Tuplet::getTotalIntegral(int excitedIndex) {
-  if(excitedIndex != -1)
-    modeSubset[excitedIndex]->setExcited(true);  
+  //if(excitedIndex != -1)
+  //  modeSubset[excitedIndex]->setExcited(true);  
 
   double integralValue = 0.0;
   //obtain Tuplet's contribution
@@ -217,8 +217,8 @@ double Potential::Tuplet::getTotalIntegral(int excitedIndex) {
     }
   }
   
-  if(excitedIndex != -1)
-    modeSubset[excitedIndex]->setExcited(false);
+  //if(excitedIndex != -1)
+  //  modeSubset[excitedIndex]->setExcited(false);
   return integralValue;
 }
 
@@ -247,9 +247,9 @@ double Potential::Tuplet::getIntegral(int startIndex, int endIndex, int coupling
   }
   return integralValue;
 }
-//================================================================================================
-//==================================END TUPLET NESTED CLASS=======================================
-//================================================================================================
+//=============================================================================
+//=========================END TUPLET NESTED CLASS=============================
+//=============================================================================
 double Potential::integralDriver(int index, int modeSelection, int modeSlice) {
   return tuplets[index]->getEffVIntegral(modeSelection,modeSlice);
 }
@@ -267,8 +267,8 @@ double Potential::getDipole(int index, int excitedModeIndex) {
 }
 
 double Potential::integrateSlice(Mode* mode, int modeIndex, bool excite) {
-  if(excite)
-    mode->setExcited(true);   
+  //if(excite)
+  //  mode->setExcited(true);   
 
   int weightMarkers[20] = {0};
   std::vector<Mode*> psi;
@@ -276,13 +276,14 @@ double Potential::integrateSlice(Mode* mode, int modeIndex, bool excite) {
 
   //It doesn't matter which tuple is used, just need integrating function
   double integralVal = tuplets[0]->getIntegral(0,nPoints,1,1,psi,slices[modeIndex],weightMarkers);  
-  if(excite)
-    mode->setExcited(false);
+  //if(excite)
+  //  mode->setExcited(false);
   return integralVal;
 }
  
 std::vector<std::vector<double>> Potential::get1DSlices() { return slices; }
 
+//============================Big set-up function==========================
 //Making the assumption that the lowest degree Potential is a complete set
 std::vector<std::vector<int>> Potential::readPot(std::vector<Mode*>& dof, bool getSlices) {
   //Find out how many tuples are in the file
