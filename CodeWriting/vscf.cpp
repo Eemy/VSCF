@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
 //====================================Begin VSCF============================================
   //Prepare: eigensolver on pure 1D slices for each mode
   for(int i = 0 ; i< nModes ; i++) {
-    prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);//-1 prevents DIIS from occurring
+    prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);//-1 prevents DIIS
   }
   //Compute effective potential integrals
   for(int iter = 0 ; iter< maxIter ; iter++) {
@@ -119,8 +119,11 @@ int main(int argc, char* argv[]) {
       energy += solver.solveMode(dof[i],effV[i],0,iter);//iter instead of -1 allow DIIS to occur
     } 
 
+    //Apply VSCF Energy Correction
     for(int i=0 ; i<pot.size() ; i++) {
-      energy -= pot[i]->getVMinus();
+      for(int j=0 ; j<potIterators[i].size() ; j++) {
+        energy -= pot[i]->integrateTuple(j,true);
+      }
     }
 
     //Check for Convergence
@@ -178,8 +181,11 @@ for(int z = 0 ; z< nModes ; z++) {
       }
     }
 
+    //Apply VSCF Energy Correction
     for(int i=0 ; i<pot.size() ; i++) {
-      energy -= pot[i]->getVMinus();
+      for(int j=0 ; j<potIterators[i].size() ; j++) {
+        energy -= pot[i]->integrateTuple(j,true);
+      }
     }
 
     //Check for Convergence
@@ -211,11 +217,11 @@ for(int comp = 0 ; comp< 3 ; comp++) {
   //Integrate all 1D pieces
   for(int a = 0 ; a< nModes ; a++) {
     dof[a]->setStates(1,0);
-    intensityComponents[3*a+comp] += dip[comp]->integrateSlice(dof[a],a,true);
+    intensityComponents[3*a+comp] += dip[comp]->integrateSlice(dof[a],a);
     dof[a]->setStates(0,0);
     for(int b = a+1 ; b< nModes ; b++) {
-      intensityComponents[3*a+comp] += dip[comp]->integrateSlice(dof[b],b,false)*overlaps[a];
-      intensityComponents[3*b+comp] += dip[comp]->integrateSlice(dof[a],a,false)*overlaps[b];
+      intensityComponents[3*a+comp] += dip[comp]->integrateSlice(dof[b],b)*overlaps[a];
+      intensityComponents[3*b+comp] += dip[comp]->integrateSlice(dof[a],a)*overlaps[b];
     }
   }
 
@@ -258,7 +264,7 @@ for(int i=0 ; i<nModes ; i++) {
   return 0;
 }
 
-//=====================================HELPER METHODS==========================================
+//==========================HELPER METHODS=============================
 void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv) {
   //read in frequencies 
   std::ifstream in("freq.dat",std::ios::in);

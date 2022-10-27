@@ -13,9 +13,9 @@ class Potential {
     ~Potential();
     std::vector<std::vector<double>> get1DSlices();
     double integralDriver(int, int, int);
-    double getVMinus();
+    double integrateTuple(int, bool);
     double getDipole(int, int);
-    double integrateSlice(Mode*, int, bool);
+    double integrateSlice(Mode*, int);
     std::vector<std::vector<int>> readPot(std::vector<Mode*>&, bool);
     int nPoints;
     int nModes;
@@ -43,7 +43,7 @@ class Potential {
         int potLength;
         std::vector<int> subspaces;
         double getEffVIntegral(int, int);
-        double getTotalIntegral(int);
+        double getTotalIntegral(bool);
         cpot *couplingRemover;
         void setUpDriver(std::unordered_map<std::string,int>&);
 

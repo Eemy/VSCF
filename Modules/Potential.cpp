@@ -197,28 +197,25 @@ double Potential::Tuplet::getEffVIntegral(int modeSelection, int modeSlice) {
   return integralValue;
 }
 
-double Potential::Tuplet::getTotalIntegral(int excitedIndex) {
-  //if(excitedIndex != -1)
-  //  modeSubset[excitedIndex]->setExcited(true);  
-
+double Potential::Tuplet::getTotalIntegral(bool correction) {
   double integralValue = 0.0;
   //obtain Tuplet's contribution
   int weightMarkers[20] = {0};
-  integralValue += (dim-1)*getIntegral(0, potLength, dim, dim, modeSubset, pot, weightMarkers);
+  double temp = getIntegral(0, potLength, dim, dim, modeSubset, pot, weightMarkers);
+  if(correction)
+    temp *= (dim-1);
+  integralValue += temp;
   
-  //include condition for 2mode VSCF
-  if(dim > 2) {
-    //loop through all subtuplets
-    for(int i=0 ; i<dim-2 ; i++) {
-      for(int j=0 ; j<subTuplets[i].size() ; j++) {
-        int weightMarkers2[20] = {0};
-        integralValue += (i+1)*getIntegral(0,(int)pow(nPoints,i+2),i+2,i+2,subTuplets[i][j]->modeSet, subTuplets[i][j]->potSet,weightMarkers2); 
-      }
+  //For 3D+ potentials: loop through all subtuplets
+  for(int i=0 ; i<dim-2 ; i++) {
+    for(int j=0 ; j<subTuplets[i].size() ; j++) {
+      int weightMarkers2[20] = {0};
+      double temp2 = getIntegral(0,(int)pow(nPoints,i+2),i+2,i+2,subTuplets[i][j]->modeSet, subTuplets[i][j]->potSet,weightMarkers2); 
+      if(correction)
+        temp2 *= (i+1);
+      integralValue += temp2; 
     }
   }
-  
-  //if(excitedIndex != -1)
-  //  modeSubset[excitedIndex]->setExcited(false);
   return integralValue;
 }
 
@@ -247,37 +244,29 @@ double Potential::Tuplet::getIntegral(int startIndex, int endIndex, int coupling
   }
   return integralValue;
 }
-//=============================================================================
-//=========================END TUPLET NESTED CLASS=============================
-//=============================================================================
+//============================================================================
+//========================END TUPLET NESTED CLASS=============================
+//============================================================================
 double Potential::integralDriver(int index, int modeSelection, int modeSlice) {
   return tuplets[index]->getEffVIntegral(modeSelection,modeSlice);
 }
 
-double Potential::getVMinus() {
-  double Vminus = 0.0;
-  for(int i=0 ; i<tuplets.size() ; i++) {
-    Vminus += tuplets[i]->getTotalIntegral(-1);
-  } 
-  return Vminus;
+double Potential::integrateTuple(int index, bool correction) {
+  double integral = tuplets[index]->getTotalIntegral(correction);
+  return integral;
 }
 
 double Potential::getDipole(int index, int excitedModeIndex) {
   return tuplets[index]->getTotalIntegral(excitedModeIndex);
 }
 
-double Potential::integrateSlice(Mode* mode, int modeIndex, bool excite) {
-  //if(excite)
-  //  mode->setExcited(true);   
-
+double Potential::integrateSlice(Mode* mode, int modeIndex) {
   int weightMarkers[20] = {0};
   std::vector<Mode*> psi;
   psi.push_back(mode);
 
   //It doesn't matter which tuple is used, just need integrating function
   double integralVal = tuplets[0]->getIntegral(0,nPoints,1,1,psi,slices[modeIndex],weightMarkers);  
-  //if(excite)
-  //  mode->setExcited(false);
   return integralVal;
 }
  

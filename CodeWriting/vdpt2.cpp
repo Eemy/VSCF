@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <stdbool.h>
+#include "../UtilityFunc/aux.h"
 #include "../Modules/Mode.h"
 #include "../Modules/Potential.h"
 #include "../Modules/EigSolver.h"
@@ -14,6 +15,7 @@
 #define a0_to_cm 5.291772108e-9 
 #define debye_to_ea0 0.393430307
 #define Na       6.02214179E23 
+#define au_to_wn 219474.6313708
 //////////////////////////////////////////////////////////////////////
 
 void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv);
@@ -93,8 +95,8 @@ int main(int argc, char* argv[]) {
   std::vector<double> overlaps(nModes);
 
   //Open results file once all set-up is completed
-  FILE *results = fopen("eemVSCF_new.dat","w");
-//====================================Begin VSCF============================================
+  FILE *results = fopen("eemVDPT2.dat","w");
+//=========================Begin VSCF==============================
   //Prepare: eigensolver on pure 1D slices for each mode
   for(int i = 0 ; i< nModes ; i++) {
     prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);//-1 prevents DIIS from occurring
@@ -119,14 +121,17 @@ int main(int argc, char* argv[]) {
       energy += solver.solveMode(dof[i],effV[i],0,iter);//iter instead of -1 allow DIIS to occur
     } 
 
+    //Apply VSCF Energy Correction
     for(int i=0 ; i<pot.size() ; i++) {
-      energy -= pot[i]->getVMinus();
+      for(int j=0 ; j<potIterators[i].size() ; j++) {
+        energy -= pot[i]->integrateTuple(j,true);
+      }
     }
 
     //Check for Convergence
     if(checkConvergence(dof,energy,conv)) {
       fprintf(results,"Converged at iteration %d\n",iter+1);
-      fprintf(results,"Ground-State VSCF Energy is: %.8f\n", energy*219474.6313708);
+      fprintf(results,"Ground-State VSCF Energy is: %.8f\n", energy*au_to_wn);
       excitedEnergies[0] = energy;
       break;
     } else {
@@ -137,8 +142,120 @@ int main(int argc, char* argv[]) {
       excitedEnergies[0] = energy;
     }
   } 
-///////End Ground-State VSCF/////////
+//====================End Ground-State VSCF====================
   for(int i = 0 ; i< nModes ; i++) {
     dof[i]->setGroundState();
   }
+//===================VMP2 Corrections to GS====================
+//====================End VMP2 Corrections=====================
+
+//=================VCIS(1) for all excited states==============
+  double* CI = new double[nModes*nModes];
+  for(int i=0 ; i<nModes*nModes ; i++) 
+    CI[i] = 0.0;
+  //Diagonal elements: VSCF + (E1-E0) for the excited mode
+  for(int i=0 ; i<nModes ; i++) 
+    CI[i*nModes+i] = excitedEnergies[0]+dof[i]->getEModal(1)-dof[i]->getEModal(0);
+  //Off-diagonal elements
+  for(int i=0 ; i<potIterators.size() ; i++) {
+    for(int j=0 ; j<potIterators[i].size() ; j++) {
+    //Iterate over each unique pair in tuple
+      for(int k=0 ; k<potIterators[i][j].size() ; k++) {
+        int firstMode = potIterators[i][j][k];
+        dof[firstMode]->setStates(1,0); 
+        for(int l=k+1 ; l<potIterators[i][j].size() ; l++) {
+          int secondMode = potIterators[i][j][l];
+          dof[secondMode]->setStates(0,1);
+          //Go through every single excitation block
+          //for(int m=0 ; m<maxQuanta ; m++) {
+          //  for(int n=0 ; n<maxQuanta ; n++) {
+              double integralVal = pot[i]->integrateTuple(j,false);
+              CI[firstMode*nModes+secondMode] += integralVal; 
+              CI[secondMode*nModes+firstMode] += integralVal; 
+          //  }
+          //}
+          dof[secondMode]->setStates(0,0); 
+        }//l loop: 2nd mode index for tuple
+        dof[k]->setStates(0,0);
+      }//k loop: mode indices for tuple
+    }//j loop: tuples 
+  }//i loop: potentials
+ 
+  double* evals = new double[nModes]; 
+  diagonalize(CI,evals,nModes);
+//=========================End VCIS(1)=========================
+
+  //Print out all the transition frequencies
+  print(results,"************************************************************************\n");
+  print(results," VSCF ground-state energy: (cm^-1) \n");
+  fprintf(results," % -15.4f \n", excitedEnergies[0]*(au_to_wn));
+  print(results," \n");
+  print(results," Transitions: (cm^-1) \n");
+  print(results," \n");
+  print(results,"  Harmonic        CIS(1)            Intensity(km/mol)\n");
+  for(int i=0; i<nModes ; i++) {
+//  fprintf(results," % -15.4f % -15.4f % -15.4f \n", freq[i],(excitedEnergies[i+1]-excitedEnergies[0])*(au_to_wn),intensities[i]);
+    fprintf(results," % -15.4f % -15.4f % \n", freq[i],(evals[i]-excitedEnergies[0])*(au_to_wn));
+
+  }
+
+  //DEALLOCATE
+  for(int i=0 ; i<nModes ; i++) delete dof[i];
+  for(int i=0 ; i<dip.size() ; i++) delete dip[i];
+  for(int i=0 ; i<pot.size() ; i++) delete pot[i];
+  delete[] evals;
+  delete[] CI;
+
+  return 0;
 }//end main
+
+//==========================HELPER METHODS=============================
+void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv) {
+  //read in frequencies 
+  std::ifstream in("freq.dat",std::ios::in);
+  if(!in) {
+    printf("Error: freq.dat could not be opened\n");
+    exit(0);
+  }
+  double val = 0.0;
+  while(in >> val) {
+    freq.push_back(val);
+  }
+
+  //Check size of freq file
+  if(freq.size() != N) {
+    printf("freq.dat is the wrong size.\n");
+    exit(0);
+  }
+
+  //Create Mode objects and return
+  for(int i=0 ; i<N ; i++) {
+    dof.push_back(new Mode(freq[i],nPoints,conv));
+  }    
+} 
+
+bool checkConvergence(std::vector<Mode*> dof, double energy, int conv) {
+  //Roothaan
+  if(conv==1) {
+    double diff = 0.0;
+    for(int i=0 ; i<dof.size() ; i++) {
+      double temp = dof[i]->computeMaxDiff();
+      if(temp > diff)
+        diff = temp;
+    }
+    return (diff < 1.0E-5) && (fabs(energy-prevEnergy)*au_to_wn <0.5);
+  }
+  //DIIS
+  if(conv==2) {
+    double max = 0.0;
+    for(int i=0 ; i<dof.size() ; i++) {
+      if(dof[i]->getDIISError() > max)
+        max = dof[i]->getDIISError();
+    }
+    printf("ConvCheck: %.12f\n",max);
+    return (max < 1.0e-10);
+  }
+}
+void print(FILE* script, std::string line) {
+  fprintf(script,line.c_str());
+}

@@ -16,38 +16,45 @@
 #define Na       6.02214179E23 
 //////////////////////////////////////////////////////////////////////
 
-void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints);
+void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv);
 bool checkConvergence(std::vector<Mode*> dof, double energy, int nModes);
 void print(FILE* script, std::string line);
 
 double prevEnergy = 0.0;
 
 int main(int argc, char* argv[]) {
-  const int defaultLength = 8;
-  int maxIter = 100;
+  const int defaultLength = 9;
+  int maxIter = 500;
 
   if(argc < defaultLength) { 
-    printf("Error: <Nmodes> <Nquad> <EnergyFile> <DipoleXFile> <DipoleYFile> <DipoleZFile> <CouplingDegree> [<EnergyFile> <Dx> <Dy> <Dz> <dim> ...]\n");
+    printf("Error: <Nmodes> <Nquad> <1-Roothaan 2-Diis> <EnergyFile> <DipoleXFile> <DipoleYFile> <DipoleZFile> <CouplingDegree> [<EnergyFile> <Dx> <Dy> <Dz> <dim> ...]\n");
+    exit(0);
+  }
+  if((argc-defaultLength)%5 != 0) {
+    printf("The number of args is invalid. Check your input and try again.\n");
     exit(0);
   }
 
   //SET-UP AND READ IN ARGS
   int nModes = atoi(argv[1]); //arg1
   int nPoints = atoi(argv[2]); //arg2
+  int conv = atoi(argv[3]);
+  if(conv != 1 && conv != 2) //default is roothaan for bad input
+    conv = 1;
   std::vector<std::string> potFileNames;
-  potFileNames.push_back(argv[3]); //arg3
+  potFileNames.push_back(argv[4]); //arg3
   std::vector<std::string> dipFileNames;
-  dipFileNames.push_back(argv[4]); //arg4
-  dipFileNames.push_back(argv[5]); //arg5
-  dipFileNames.push_back(argv[6]); //arg6
+  dipFileNames.push_back(argv[5]); //arg4
+  dipFileNames.push_back(argv[6]); //arg5
+  dipFileNames.push_back(argv[7]); //arg6
   std::vector<int> potDims;
-  potDims.push_back(atoi(argv[7])); //arg7
+  potDims.push_back(atoi(argv[8])); //arg7
 
 /////////////////////////Create Mode, EigSolver, Potential Objects////////////////////////
   std::vector<Mode*> dof;
   std::vector<double> freq;
-  readin(dof,freq,nModes,nPoints); 
-  EigSolver solver(nPoints);
+  readin(dof,freq,nModes,nPoints,conv); 
+  EigSolver solver(nPoints,conv);
 
   std::vector<Potential*> pot;
   std::vector<Potential*> dip;
@@ -77,11 +84,7 @@ int main(int argc, char* argv[]) {
         dipIterators.push_back(dip[i*3+j-1]->readPot(dof,false));
       }
     } 
-  } else if((argc-defaultLength)%5 != 0) {
-    printf("The number of args is invalid. Check your input and try again.\n");
-    exit(0);
   }
-
   //Get 1D slices
   std::vector<std::vector<double>> slices = pot[0]->get1DSlices();
   std::vector<double> excitedEnergies(nModes+1);
@@ -90,11 +93,11 @@ int main(int argc, char* argv[]) {
   std::vector<double> overlaps(nModes);
 
   //Open results file once all set-up is completed
-  FILE *results = fopen("eemVSCF_new.dat","w");
+  FILE *results = fopen("eemVSCF_x.dat","w");
 //====================================Begin VSCF============================================
   //Prepare: eigensolver on pure 1D slices for each mode
   for(int i = 0 ; i< nModes ; i++) {
-    prevEnergy += solver.solveMode(dof[i],slices[i],0);
+    prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);//-1 prevents DIIS
   }
   //Compute effective potential integrals
   for(int iter = 1 ; iter< maxIter ; iter++) {
@@ -120,10 +123,12 @@ int main(int argc, char* argv[]) {
 //    for(int i = 0 ; i< nModes ; i++) {
 //      energy += solver.solveMode(dof[i],effV[i],0);
 //    } 
-    energy += solver.solveMode(dof[uh],effV[uh],0);
+    energy += solver.solveMode(dof[uh],effV[uh],0,iter);
   }
     for(int i=0 ; i<pot.size() ; i++) {
-      energy -= pot[i]->getVMinus();
+      for(int j=0 ; j<potIterators[i].size() ; j++) {
+        energy -= pot[i]->integrateTuple(j,true);
+      }
     }
 
     //Check for Convergence
@@ -148,11 +153,12 @@ int main(int argc, char* argv[]) {
 for(int z = 0 ; z< nModes ; z++) {
   //Prepare 1D slices (effV guess)
   prevEnergy = 0.0;
+  dof[z]->setStates(1,1); //excite  mode
   for(int i = 0 ; i< nModes ; i++) {
     if(i==z) {
-      prevEnergy += solver.solveMode(dof[i],slices[i],1);
+      prevEnergy += solver.solveMode(dof[i],slices[i],1,-1);
     } else {
-      prevEnergy += solver.solveMode(dof[i],slices[i],0);
+      prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);
     }
   }
   //Compute effective potential integrals
@@ -184,12 +190,14 @@ for(int z = 0 ; z< nModes ; z++) {
 //      }
 //    }
     if(z==uh)
-      energy += solver.solveMode(dof[uh],effV[uh],1);
+      energy += solver.solveMode(dof[uh],effV[uh],1,iter);
     else
-      energy += solver.solveMode(dof[uh],effV[uh],0);
+      energy += solver.solveMode(dof[uh],effV[uh],0,iter);
   }
     for(int i=0 ; i<pot.size() ; i++) {
-      energy -= pot[i]->getVMinus();
+      for(int j=0 ; j<potIterators[i].size() ; j++) {
+        energy -= pot[i]->integrateTuple(j,true);
+      }
     }
 
     //Check for Convergence
@@ -207,11 +215,12 @@ for(int z = 0 ; z< nModes ; z++) {
     }
   }
   dof[z]->setExcitedState();
+  dof[z]->setStates(0,0);
 }//z loop: excited mode
 ////////End Excited-State VSCF///////
 
 for(int i = 0 ; i< nModes ; i++) {
-  dof[i]->updateWaveFcn(dof[i]->getGState());
+  dof[i]->useVSCFStates(true);
   overlaps[i] = dof[i]->getOverlapEG();
 }
 
@@ -219,10 +228,12 @@ for(int i = 0 ; i< nModes ; i++) {
 for(int comp = 0 ; comp< 3 ; comp++) {
   //Integrate all 1D pieces
   for(int a = 0 ; a< nModes ; a++) {
-    intensityComponents[3*a+comp] += dip[comp]->integrateSlice(dof[a],a,true);
+    dof[a]->setStates(1,0);
+    intensityComponents[3*a+comp] += dip[comp]->integrateSlice(dof[a],a);
+    dof[a]->setStates(0,0);
     for(int b = a+1 ; b< nModes ; b++) {
-      intensityComponents[3*a+comp] += dip[comp]->integrateSlice(dof[b],b,false)*overlaps[a];
-      intensityComponents[3*b+comp] += dip[comp]->integrateSlice(dof[a],a,false)*overlaps[b];
+      intensityComponents[3*a+comp] += dip[comp]->integrateSlice(dof[b],b)*overlaps[a];
+      intensityComponents[3*b+comp] += dip[comp]->integrateSlice(dof[a],a)*overlaps[b];
     }
   }
 
@@ -230,7 +241,9 @@ for(int comp = 0 ; comp< 3 ; comp++) {
     for(int j=0 ; j<dipIterators[3*i+comp].size() ; j++) {
       for(int k=0 ; k<dipIterators[3*i+comp][j].size() ; k++) {
         int modeIndex = dipIterators[3*i+comp][j][k];
+        dof[modeIndex]->setStates(1,0);
         intensityComponents[3*modeIndex+comp] += dip[3*i+comp]->getDipole(j,k); 
+        dof[modeIndex]->setStates(0,0);
       }//k loop: mode indices for tuple
     }//j loop: tuples 
   }//i loop: potentials
@@ -264,7 +277,7 @@ for(int i=0 ; i<nModes ; i++) {
 }
 
 //=====================================HELPER METHODS==========================================
-void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints) {
+void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv) {
   //read in frequencies 
   std::ifstream in("freq.dat",std::ios::in);
   if(!in) {
@@ -284,7 +297,7 @@ void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoin
 
   //Create Mode objects and return
   for(int i=0 ; i<N ; i++) {
-    dof.push_back(new Mode(freq[i],nPoints));
+    dof.push_back(new Mode(freq[i],nPoints,conv));
   }    
 } 
 
