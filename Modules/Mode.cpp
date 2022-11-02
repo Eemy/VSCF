@@ -19,11 +19,13 @@ Mode::Mode(double _omega, int _nPoints, int _conv) {
     energies = NULL; 
     waveAll = NULL;
     waveAll_prev = NULL;
+    tempAll = NULL;
     //Hold VSCF states
     vscfPsi = new double[nBasis*2];
 
     //Control which states to use
     vscfStates = false; //mainly for dipoles
+    harm = false;
     bra = 0;
     ket = 0;
     
@@ -117,9 +119,6 @@ double Mode::computeMaxDiff() {
 }
 
 //============================GETTERS/SETTERS================================
-//double* Mode::getWaveFcn() {return waveFcn;}
-//double* Mode::getGState() {return groundState;}
-//double* Mode::getEState() {return excitedState;}
 double Mode::getOverlapEG() {
   double integral = 0.0;
   for(int i=0 ; i<nBasis ; i++)
@@ -147,6 +146,32 @@ double Mode::getDIISError() {return maxDiisError;}
 double* Mode::getDensity() {return density;}
 void Mode::setStates(int _bra, int _ket) {bra = _bra; ket = _ket;}
 void Mode::useVSCFStates(bool use) {vscfStates = use;}
+void Mode::setHarmonic() {
+  double* harmPsi = new double[nBasis*nBasis];
+  for(int i=0 ; i<nBasis ; i++) {
+    for(int j=0 ; j<nBasis ; j++) {
+      if(i==j)
+        harmPsi[i*nBasis+j] = 1;
+      else
+        harmPsi[i*nBasis+j] = 0;
+    }
+  }
+  if(waveAll != NULL)
+    tempAll = waveAll; //pass pointer of anharmonic states, if present 
+  waveAll = harmPsi;
+  harm = true;
+}
+
+void Mode::setAnharmonic() {
+  if(tempAll != NULL && harm) {
+    delete[] waveAll;
+    waveAll = tempAll;
+    tempAll = NULL; 
+    harm = false;
+  } else {
+    printf("setHarmonic() was never called or there are no available anharmonic states.\n");
+  }
+}
 //====================FOR EFFECTIVE POTENTIAL=======================
 double Mode::getIntegralComponent(int point) {
   if(vscfStates) {
@@ -172,7 +197,7 @@ double Mode::getIntegralComponent(int point) {
   }
   return braIntegral*ketIntegral;
 }
-//========================================DIIS Shenanigans=========================================
+//=========================DIIS Shenanigans=============================
 void Mode::diis(double *F, double *E, int iter) {
   printf("Iteration: %d\n",iter);  
   //Make copy of current Fock Matrix to save, the one passed in can be modified
@@ -209,7 +234,7 @@ void Mode::diis(double *F, double *E, int iter) {
         }
       }
     }
-    printmat(A,index+1,index+1);
+    printmat(A,index+1,index+1,1.0);
      
     //solve for regression coeff
     double *B = new double[index+1];

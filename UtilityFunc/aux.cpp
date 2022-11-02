@@ -151,12 +151,12 @@ void linsolver(double* A, double* B, int N)
         for(i=0; i<N; i++) B[i] = X[i];
 }
 
-void printmat(double* mat, int n, int m)
+void printmat(double* mat, int n, int m, double scale)
 {
 int i,j;
 for(i=0; i<n; i++){
   for(j=0; j<m; j++){
-    printf("% -10.6e  ",mat[i*m+j]);
+    printf("% -10.6e  ",mat[i*m+j]*scale);
   }
  printf("\n");
  }

@@ -26,6 +26,8 @@ class Mode {
     double getWeight(int);
     double getHerm(int, int);
     double getNorm(int);
+    void setHarmonic();
+    void setAnharmonic();
     double getIntegralComponent(int);
 //    double getPoint(int);
     double getDIISError();
@@ -44,6 +46,7 @@ class Mode {
     double* energies;
     double* waveAll;
     double* waveAll_prev;
+    double* tempAll;
 
     double* points;
     double* weights;
@@ -52,6 +55,7 @@ class Mode {
     
     double* vscfPsi;
     bool vscfStates; 
+    bool harm;
     int bra;
     int ket;
 

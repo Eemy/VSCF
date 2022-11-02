@@ -58,7 +58,7 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
       }
     }
     //printf("Hamiltonian\n"); 
-    //printmat(H,nBasis,nBasis);    
+    //printmat(H,nBasis,nBasis,1.0);    
  
     //Compute Error Vector
     if(iter >= 0 && conv == 2) { 
