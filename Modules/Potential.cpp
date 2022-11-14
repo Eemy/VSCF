@@ -211,6 +211,18 @@ double Potential::Tuplet::getTotalIntegral(bool correction) {
     for(int j=0 ; j<subTuplets[i].size() ; j++) {
       int weightMarkers2[20] = {0};
       double temp2 = getIntegral(0,(int)pow(nPoints,i+2),i+2,i+2,subTuplets[i][j]->modeSet, subTuplets[i][j]->potSet,weightMarkers2); 
+
+      //Apply overlap integrals for modes not included 
+      for(int k=0 ; k<dim ; k++) {
+        bool found = false;
+        for(int l=0 ; l<subTuplets[i][j]->modeSet.size() ; l++) {
+          if(modeSubset[k] == subTuplets[i][j]->modeSet[l])
+            found = true; 
+        } 
+        if(!found)
+          temp2 *= modeSubset[k]->getOverlapEG();
+      }
+
       if(correction)
         temp2 *= (i+1);
       integralValue += temp2; 

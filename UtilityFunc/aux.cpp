@@ -1,4 +1,5 @@
 #include <cmath>
+#include <vector>
 #include "aux.h"
 //#include <cstdio>
 
@@ -162,3 +163,34 @@ for(i=0; i<n; i++){
  }
 printf("\n");
 }
+
+int tupleIndexDriver(std::vector<int>& targetIndices, int nModes) {
+  int dim = indices.size();
+  std::vector<int> indices(dim); 
+  for(int i=0 ; i<dim ; i++)
+    indices[i] = i;
+  
+  return tupleIndex(0,dim,0,indices,targetIndices,nModes);
+}
+
+int tupleIndex(int& counter, int dim, int recursionLevel, std::vector<int>& indices, std::vector<int>& targetIndices, int nModes) {
+  if(recursionLevel == dim-1)
+    while(iter[recursionLevel] < nModes) {
+      //Check if indices match
+      if(indices == targetIndices)
+        return counter;
+      //Increment if not
+      iter[recursionLevel]++;
+      counter++;  
+    } else {
+      while(iter[recursionLevel] < nModes-iter.size()+recursionLevel+1) {
+        tupleIndex(counter,dim,recursionLevel+1,indices,targetIndices,nModes);
+        iter[recursionLevel]++;
+        for(int i=recursionLevel+1; i<dim ; i++) 
+          iter[i] = iter[i-1]+1;
+      }
+    }
+  } 
+  return counter;
+}
+

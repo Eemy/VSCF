@@ -94,27 +94,14 @@ int main(int argc, char* argv[]) {
   std::vector<double> intensities(nModes);
   std::vector<double> overlaps(nModes);
 
-  //read rmass for tests
-  std::ifstream in("rmass.dat",std::ios::in);
-  std::vector<double> mass; 
- if(!in) {
-    printf("Error: rmass.dat could not be opened\n");
-    exit(0);
-  }
-  double val = 0.0;
-  while(in >> val) {
-    mass.push_back(val*1822.8884848961380701);
-  }
-
   //Open results file once all set-up is completed
   FILE *results = fopen("eemVDPT2.dat","w");
 //=========================Begin VSCF==============================
   //Prepare: eigensolver on pure 1D slices for each mode
   for(int i = 0 ; i< nModes ; i++) {
     prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);//-1 prevents DIIS from occurring
-    dof[i]->setHarmonic();
   }
-/*  //Compute effective potential integrals
+  //Compute effective potential integrals
   for(int iter = 0 ; iter< maxIter ; iter++) {
     std::vector<std::vector<double>> effV = pot[0]->get1DSlices();
     for(int i=0 ; i<potIterators.size() ; i++) {
@@ -154,16 +141,17 @@ int main(int argc, char* argv[]) {
       print(results,"Ground-State VSCF failed to converge.\n");
       excitedEnergies[0] = energy;
     }
-  }*/ 
+  } 
 //====================End Ground-State VSCF====================
   for(int i = 0 ; i< nModes ; i++) {
     dof[i]->setGroundState();
+    dof[i]->setHarmonic();
   }
 //===================VMP2 Corrections to GS====================
 //====================End VMP2 Corrections=====================
 
 //==================VCIS for all excited states================
-  int maxQuanta = 3;
+  int maxQuanta = 1;
   double* CI = new double[nModes*nModes*maxQuanta*maxQuanta];
   for(int i=0 ; i<nModes*nModes*maxQuanta*maxQuanta ; i++) 
     CI[i] = 0.0;
@@ -184,43 +172,26 @@ int main(int argc, char* argv[]) {
           int secondMode = potIterators[i][j][l];
           //Go through each single excitation block <100, <200, <300...
           for(int m=0 ; m<maxQuanta ; m++) {
-            int state11 = m+1;
-            int state12 = 0;
-            dof[firstMode]->setStates(m+1,0); 
+            dof[firstMode]->setBra(m+1); 
             for(int n=0 ; n<maxQuanta ; n++) {
-              int state21 = 0;
-              int state22 = n+1;
-              dof[secondMode]->setStates(0,n+1);
-              
-              //debug
-              if(state11-state12 == 2 && state22-state21 == 2) {
-                double val = 1/(2*dof[firstMode]->getOmega()*mass[firstMode])*1/(2*dof[secondMode]->getOmega()*mass[secondMode])*sqrt(state21+1)*sqrt(state21+2)*sqrt(state11)*sqrt(state11-1);
-                printf("Modes:%d,%d States: %d,%d Value: %.10f\n",firstMode,secondMode,m+1,n+1,val); 
-              } 
+              dof[secondMode]->setKet(n+1);
 
               double integralVal = pot[i]->integrateTuple(j,false);
               CI[m*nModes*nModes*maxQuanta+firstMode*nModes*maxQuanta+n*nModes+secondMode] += integralVal; 
               CI[n*nModes*nModes*maxQuanta+secondMode*nModes*maxQuanta+m*nModes+firstMode] += integralVal; 
 
-              dof[secondMode]->setStates(0,0); 
+              dof[secondMode]->setKet(0); 
             }
-            dof[firstMode]->setStates(0,0);
+            dof[firstMode]->setBra(0);
           }
         }//l loop: 2nd mode index for tuple
       }//k loop: mode indices for tuple
     }//j loop: tuples 
   }//i loop: potentials
-
-  //Before Diag
-  printmat(CI,nModes*maxQuanta,nModes*maxQuanta,1.0);  
-  printf("GS Energy: %-10.6e\n",excitedEnergies[0]*au_to_wn);
  
   double* evals = new double[nModes*maxQuanta]; 
   diagonalize(CI,evals,nModes*maxQuanta);
   
-  printmat(evals,nModes*maxQuanta,1,au_to_wn);
-  printmat(CI,nModes*maxQuanta,nModes*maxQuanta,1.0);
-
   //Find single excitation energies
   int counter = 0;
   for(int i=0 ; i<nModes*maxQuanta ; i++) { 
@@ -238,6 +209,113 @@ int main(int argc, char* argv[]) {
       break;
   }
 //=========================End VCIS============================
+  //read rmass for tests
+  std::ifstream in("rmass.dat",std::ios::in);
+  std::vector<double> mass; 
+ if(!in) {
+    printf("Error: rmass.dat could not be opened\n");
+    exit(0);
+  }
+  double val = 0.0;
+  while(in >> val) {
+    mass.push_back(val*1822.8884848961380701);
+  }
+//======================VMP2 Corrections=======================
+  std::vector<double> mp2Corr(nModes);
+
+  //perturbation is total - effV
+  int maxState = 5;
+  int minState = 1;
+  int statesIncluded = maxState-minState+1;
+/*
+  //Perturbation integrals involving single excitations 
+  std::vector<double> singles(nModes*nModes*statesIncluded);
+  for(int i=0 ; i<potIterators.size() ; i++) {
+    for(int j=0 ; j<potIterators[i].size() ; j++) {
+      //Mode fixed at (1,0)
+      for(int k=0 ; k<potIterators[i][j].size() ; k++) {
+        int firstMode = potIterators[i][j][k];
+        dof[firstMode]->setBra(1);
+        //Excited Mode
+        for(int l=0 ; l<potIterators[i][j].size() ; l++) {
+          int secondMode = potIterators[i][j][l];
+          //Quanta of the Single Excitation
+          for(int m=minState ; m<=maxState ; m++) { //do not include |10..>
+            dof[secondMode]->setKet(m); 
+            double integralVal = pot[i]->integrateTuple(j,false);
+            singles[firstMode*nModes*statesIncluded+secondMode*statesIncluded+(m-minState)] += integralVal;
+          } 
+          dof[secondMode]->setKet(0);
+        }
+        dof[firstMode]->setBra(0);
+      }
+    }
+  }
+*/  
+  double mode1 = 1/sqrt(2*mass[0]*dof[0]->getOmega());
+  double mode2 = 1/sqrt(2*mass[1]*dof[1]->getOmega());
+//  double mode3 = 1/sqrt(2*mass[2]*dof[2]->getOmega());
+//  double mode4 = 1/sqrt(2*mass[3]*dof[3]->getOmega());
+ 
+/*  printf("10|20: %.8f\n",mode1*mode1*mode1*(2*sqrt(2)+sqrt(2)+3*sqrt(2))*mode2*mode2);
+  printf("10|40: %.8f\n",sqrt(2)*sqrt(3)*2*mode1*mode1*mode1*mode2*mode2);
+  printf("10|02: %.8f\n",mode1*mode1*mode1*(3)*sqrt(2)*mode2*mode2);*/
+/*
+  printf("tuple1: 10|02 xy2 %.8f\n",sqrt(2)*mode1*(mode2*mode2));
+  printf("tuple2: 10|02 xy2z2 %.8f\n",sqrt(2)*mode1*(mode2*mode2*mode3*mode3));
+  printf("tuple2: 10|02 xy2w2 %.8f\n",sqrt(2)*mode1*(mode3*mode3*mode4*mode4));
+
+  printf("Predicted: 10|20: %.8f\n",mode1*sqrt(2)*(mode2*mode2+mode3*mode3+mode4*mode4+mode2*mode2*mode3*mode3+mode2*mode2*mode4*mode4+mode3*mode3*mode4*mode4));
+  printf("Predicted: 10|02: %.8f\n",mode1*sqrt(2)*(mode2*mode2+mode2*mode2*mode3*mode3+mode2*mode2*mode4*mode4));
+
+  double* singlesVector = &singles[0];
+  printmat(singlesVector,nModes,nModes*statesIncluded,1.0);
+*/
+
+  //Perturbation integrals involving double excitations
+  double nPairs = nModes*(nModes-1)/2;
+  std::vector<double> doubles(nModes*nPairs*statesIncluded*statesIncluded);
+  std::vector<int> indices(2); //hold pair indices
+  for(int i=0 ; i<potIterators.size() ; i++) {
+    for(int j=0 ; j<potIterators[i].size() ; j++) {
+      //Mode fixed at (1,0)
+      for(int k=0 ; k<potIterators[i][j].size() ; k++) {
+        int firstMode = potIterators[i][j][k];
+        dof[firstMode]->setBra(1);
+        //Excited Mode
+        for(int l=0 ; l<potIterators[i][j].size() ; l++) {
+          //Excited Mode 2
+          int secondMode = potIterators[i][j][l];
+          indices[0] = secondMode; 
+          for(int l2=l+1 ; l2<potIterators[i][j].size() ; l2++) {
+            int thirdMode = potIterators[i][j][l2]; 
+            indices[1] = thirdMode;
+            //Quanta of the Excitation
+            for(int m=minState ; m<=maxState ; m++) {
+              dof[secondMode]->setKet(m); 
+              //Quanta of 2nd Excitation
+              for(int m2=minState ; m2<=maxState ; m2++) {
+                dof[thirdMode]->setKet(m2);
+                double integralVal = pot[i]->integrateTuple(j,false);
+                doubles[firstMode*nPairs*statesIncluded*statesIncluded+tupleIndexDriver(indices,nModes)*statesIncluded*statesIncluded+(m-minState)*statesIncluded+(n-minState)] += integralVal;
+                dof[thirdMode]->setKet(0);
+              }
+              dof[secondMode]->setKet(0);
+            } 
+          }
+        }
+        dof[firstMode]->setBra(0);
+      }
+    }
+  }
+
+  printf("Predicted: 10|20: %.8f\n",mode1*sqrt(2)*(mode2*mode2+mode3*mode3+mode4*mode4+mode2*mode2*mode3*mode3+mode2*mode2*mode4*mode4+mode3*mode3*mode4*mode4));
+  printf("Predicted: 10|02: %.8f\n",mode1*sqrt(2)*(mode2*mode2+mode2*mode2*mode3*mode3+mode2*mode2*mode4*mode4));
+
+  double* doublesVector = &doubles[0];
+  printmat(doublesVector,nModes,nModes*statesIncluded,1.0);
+
+//===================End VMP2 Corrections======================
 
   //Print out all the transition frequencies
   print(results,"************************************************************************\n");

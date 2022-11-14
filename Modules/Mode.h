@@ -32,7 +32,8 @@ class Mode {
 //    double getPoint(int);
     double getDIISError();
     double *getDensity();
-    void setStates(int, int);
+    void setBra(int);
+    void setKet(int);
     void diis(double*,double*,int);
   private:
     void setMaxElement(double*);

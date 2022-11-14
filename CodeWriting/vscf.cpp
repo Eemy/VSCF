@@ -15,7 +15,6 @@
 #define debye_to_ea0 0.393430307
 #define Na       6.02214179E23 
 //////////////////////////////////////////////////////////////////////
-
 void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv);
 bool checkConvergence(std::vector<Mode*> dof, double energy, int conv);
 void print(FILE* script, std::string line);
@@ -148,7 +147,8 @@ int main(int argc, char* argv[]) {
 for(int z = 0 ; z< nModes ; z++) {
   //Prepare 1D slices (effV guess)
   prevEnergy = 0.0;
-  dof[z]->setStates(1,1); //excite mode
+  dof[z]->setBra(1); //excite mode
+  dof[z]->setKet(1);
   for(int i = 0 ; i< nModes ; i++) {
     if(i==z) {
       prevEnergy += solver.solveMode(dof[i],slices[i],1,-1);
@@ -203,7 +203,8 @@ for(int z = 0 ; z< nModes ; z++) {
     }
   }
   dof[z]->setExcitedState();
-  dof[z]->setStates(0,0);
+  dof[z]->setBra(0);
+  dof[z]->setKet(0);
 }//z loop: excited mode
 ////////End Excited-State VSCF///////
 
@@ -216,9 +217,11 @@ for(int i = 0 ; i< nModes ; i++) {
 for(int comp = 0 ; comp< 3 ; comp++) {
   //Integrate all 1D pieces
   for(int a = 0 ; a< nModes ; a++) {
-    dof[a]->setStates(1,0);
+    dof[a]->setBra(1);
+    dof[a]->setKet(0);
     intensityComponents[3*a+comp] += dip[comp]->integrateSlice(dof[a],a);
-    dof[a]->setStates(0,0);
+    dof[a]->setBra(0);
+    dof[a]->setKet(0);
     for(int b = a+1 ; b< nModes ; b++) {
       intensityComponents[3*a+comp] += dip[comp]->integrateSlice(dof[b],b)*overlaps[a];
       intensityComponents[3*b+comp] += dip[comp]->integrateSlice(dof[a],a)*overlaps[b];
@@ -229,9 +232,11 @@ for(int comp = 0 ; comp< 3 ; comp++) {
     for(int j=0 ; j<dipIterators[3*i+comp].size() ; j++) {
       for(int k=0 ; k<dipIterators[3*i+comp][j].size() ; k++) {
         int modeIndex = dipIterators[3*i+comp][j][k];
-        dof[modeIndex]->setStates(1,0);
+        dof[modeIndex]->setBra(1);
+        dof[modeIndex]->setKet(0);
         intensityComponents[3*modeIndex+comp] += dip[3*i+comp]->getDipole(j,k); 
-        dof[modeIndex]->setStates(0,0);
+        dof[modeIndex]->setBra(1);
+        dof[modeIndex]->setKet(0);
       }//k loop: mode indices for tuple
     }//j loop: tuples 
   }//i loop: potentials

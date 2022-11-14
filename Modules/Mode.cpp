@@ -121,8 +121,13 @@ double Mode::computeMaxDiff() {
 //============================GETTERS/SETTERS================================
 double Mode::getOverlapEG() {
   double integral = 0.0;
-  for(int i=0 ; i<nBasis ; i++)
-    integral += vscfPsi[i]*vscfPsi[nBasis+i];
+  if(vscfStates) {
+    for(int i=0 ; i<nBasis ; i++)
+      integral += vscfPsi[i]*vscfPsi[nBasis+i];
+  } else {
+    for(int i=0 ; i<nBasis ; i++)
+      integral += waveAll[bra*nBasis+i]*waveAll[ket*nBasis+i];
+  }
   return integral;
 }
 
@@ -144,7 +149,8 @@ double Mode::getHerm(int herm, int point) {return hermiteEval[herm*nPoints+point
 double Mode::getNorm(int index) {return norm[index];}
 double Mode::getDIISError() {return maxDiisError;}
 double* Mode::getDensity() {return density;}
-void Mode::setStates(int _bra, int _ket) {bra = _bra; ket = _ket;}
+void Mode::setBra(int _bra) {bra = _bra;}
+void Mode::setKet(int _ket) {ket = _ket;}
 void Mode::useVSCFStates(bool use) {vscfStates = use;}
 void Mode::setHarmonic() {
   double* harmPsi = new double[nBasis*nBasis];
