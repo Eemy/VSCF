@@ -24,7 +24,7 @@ Mode::Mode(double _omega, int _nPoints, int _conv) {
     vscfPsi = new double[nBasis*2];
 
     //Control which states to use
-    vscfStates = false; //mainly for dipoles
+    vscfStates = false; //default to modals
     harm = false;
     bra = 0;
     ket = 0;
@@ -151,6 +151,8 @@ double Mode::getDIISError() {return maxDiisError;}
 double* Mode::getDensity() {return density;}
 void Mode::setBra(int _bra) {bra = _bra;}
 void Mode::setKet(int _ket) {ket = _ket;}
+int Mode::getBra() {return bra;}
+int Mode::getKet() {return ket;}
 void Mode::useVSCFStates(bool use) {vscfStates = use;}
 void Mode::setHarmonic() {
   double* harmPsi = new double[nBasis*nBasis];
@@ -240,7 +242,7 @@ void Mode::diis(double *F, double *E, int iter) {
         }
       }
     }
-    printmat(A,index+1,index+1,1.0);
+    printmat(A,1,index+1,index+1,1.0);
      
     //solve for regression coeff
     double *B = new double[index+1];

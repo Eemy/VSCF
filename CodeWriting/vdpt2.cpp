@@ -224,57 +224,103 @@ int main(int argc, char* argv[]) {
   std::vector<double> mp2Corr(nModes);
 
   //perturbation is total - effV
-  int maxState = 5;
+  int maxState = 8;
   int minState = 1;
-  int statesIncluded = maxState-minState+1;
-/*
+  int numStates = maxState-minState+1;
+
   //Perturbation integrals involving single excitations 
-  std::vector<double> singles(nModes*nModes*statesIncluded);
-  for(int i=0 ; i<potIterators.size() ; i++) {
-    for(int j=0 ; j<potIterators[i].size() ; j++) {
-      //Mode fixed at (1,0)
-      for(int k=0 ; k<potIterators[i][j].size() ; k++) {
-        int firstMode = potIterators[i][j][k];
-        dof[firstMode]->setBra(1);
-        //Excited Mode
-        for(int l=0 ; l<potIterators[i][j].size() ; l++) {
-          int secondMode = potIterators[i][j][l];
-          //Quanta of the Single Excitation
-          for(int m=minState ; m<=maxState ; m++) { //do not include |10..>
-            dof[secondMode]->setKet(m); 
-            double integralVal = pot[i]->integrateTuple(j,false);
-            singles[firstMode*nModes*statesIncluded+secondMode*statesIncluded+(m-minState)] += integralVal;
-          } 
-          dof[secondMode]->setKet(0);
-        }
-        dof[firstMode]->setBra(0);
-      }
-    }
-  }
-*/  
-  double mode1 = 1/sqrt(2*mass[0]*dof[0]->getOmega());
-  double mode2 = 1/sqrt(2*mass[1]*dof[1]->getOmega());
-//  double mode3 = 1/sqrt(2*mass[2]*dof[2]->getOmega());
-//  double mode4 = 1/sqrt(2*mass[3]*dof[3]->getOmega());
- 
-/*  printf("10|20: %.8f\n",mode1*mode1*mode1*(2*sqrt(2)+sqrt(2)+3*sqrt(2))*mode2*mode2);
-  printf("10|40: %.8f\n",sqrt(2)*sqrt(3)*2*mode1*mode1*mode1*mode2*mode2);
-  printf("10|02: %.8f\n",mode1*mode1*mode1*(3)*sqrt(2)*mode2*mode2);*/
-/*
-  printf("tuple1: 10|02 xy2 %.8f\n",sqrt(2)*mode1*(mode2*mode2));
-  printf("tuple2: 10|02 xy2z2 %.8f\n",sqrt(2)*mode1*(mode2*mode2*mode3*mode3));
-  printf("tuple2: 10|02 xy2w2 %.8f\n",sqrt(2)*mode1*(mode3*mode3*mode4*mode4));
+  std::vector<double> singles(nModes*nModes*numStates);
+  for(int i=0 ; i<nModes ; i++) {
+    dof[i]->setBra(1);
+    for(int j=0 ; j<nModes ; j++) {
+      std::vector<int> diff;
+      diff.push_back(i);
+      diff.push_back(j);
+      for(int l=0 ; l<potIterators.size() ; l++) {
+        for(int l2=0 ; l2<potIterators[l].size(); l2++) {
+        
+          for(int m=minState; m<=maxState ; m++) {
+            dof[j]->setKet(m);
 
-  printf("Predicted: 10|20: %.8f\n",mode1*sqrt(2)*(mode2*mode2+mode3*mode3+mode4*mode4+mode2*mode2*mode3*mode3+mode2*mode2*mode4*mode4+mode3*mode3*mode4*mode4));
-  printf("Predicted: 10|02: %.8f\n",mode1*sqrt(2)*(mode2*mode2+mode2*mode2*mode3*mode3+mode2*mode2*mode4*mode4));
+            double integralVal = 1.0;
+            for(int n=0 ; n<diff.size() ; n++) {
+              if(dof[diff[n]]->getBra() != dof[diff[n]]->getKet()) {
+                bool found = false;
+                for(int n2=0 ; n2<potIterators[l][l2].size() ; n2++) {
+                  if(diff[n]==potIterators[l][l2][n2]) {
+                    found = true;
+                    break;
+                  }
+                }
+                if(!found) {
+                  integralVal = 0;
+                  break;
+                }
+              }          
+            }
+            if(integralVal != 0) { 
+              printf("Integral: %i %i %i, Tuple Num: %i\n",i,j,m,l2);        
+              integralVal *= pot[l]->integrateTuple(l2,false);
+              singles[i*nModes*numStates+j*numStates+(m-minState)] += integralVal;
+            }
+            dof[j]->setKet(0);
+          }//m
+        }//l2
+      }//l
+    }//j
+    dof[i]->setBra(0);
+  }//i
 
-  double* singlesVector = &singles[0];
-  printmat(singlesVector,nModes,nModes*statesIncluded,1.0);
-*/
 
-  //Perturbation integrals involving double excitations
+  //Perturbation integrals involving single excitations 
+  std::vector<double> singles2(nModes*nModes*numStates);
+  for(int i=0 ; i<nModes ; i++) {
+    dof[i]->setBra(1);
+    for(int j=0 ; j<potIterators.size() ; j++) {
+    for(int j2=0 ; j2<potIterators[j].size() ; j2++) {
+
+      for(int k=0 ; k<nModes ; k++) {
+        std::vector<int> diff;
+        diff.push_back(i);
+        diff.push_back(k);
+        for(int l=minState ; l<=maxState ; l++) {
+          dof[k]->setKet(l);
+          double integralVal = 1.0;
+          for(int n=0 ; n<diff.size() ; n++) {
+            if(dof[diff[n]]->getBra() != dof[diff[n]]->getKet()) {
+              bool found = false;
+              for(int n2=0 ; n2<potIterators[j][j2].size() ; n2++) {
+                if(diff[n]==potIterators[j][j2][n2]) {
+                  found = true;
+                  break;
+                }
+              }
+              if(!found) {
+                integralVal = 0;
+                break;
+              }
+            }          
+          }
+          if(integralVal != 0) { 
+            printf("Integral: %i %i %i, Tuple Num: %i\n",i,k,l,j2);        
+            integralVal *= pot[j]->integrateTuple(j2,false);
+            singles2[i*nModes*numStates+k*numStates+(l-minState)] += integralVal;
+          }
+          dof[k]->setKet(0);
+        }//l
+//      for(int k2=0 ; k2<nModes ; k2++) {
+//        for(int l2=minState ; l2<=maxState ; l2) {
+      }//k
+
+    }//j2
+    }//j
+    dof[i]->setBra(0);
+  }//i
+
+
+/*  //Perturbation integrals involving double excitations
   double nPairs = nModes*(nModes-1)/2;
-  std::vector<double> doubles(nModes*nPairs*statesIncluded*statesIncluded);
+  std::vector<double> doubles(nModes*nPairs*numStates*numStates);
   std::vector<int> indices(2); //hold pair indices
   for(int i=0 ; i<potIterators.size() ; i++) {
     for(int j=0 ; j<potIterators[i].size() ; j++) {
@@ -297,7 +343,10 @@ int main(int argc, char* argv[]) {
               for(int m2=minState ; m2<=maxState ; m2++) {
                 dof[thirdMode]->setKet(m2);
                 double integralVal = pot[i]->integrateTuple(j,false);
-                doubles[firstMode*nPairs*statesIncluded*statesIncluded+tupleIndexDriver(indices,nModes)*statesIncluded*statesIncluded+(m-minState)*statesIncluded+(n-minState)] += integralVal;
+                doubles[firstMode*nPairs*numStates*numStates+
+                        tupleIndexDriver(indices,nModes)*numStates*numStates+
+                        (m-minState)*numStates+
+                        (m2-minState)] += integralVal;
                 dof[thirdMode]->setKet(0);
               }
               dof[secondMode]->setKet(0);
@@ -309,12 +358,108 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  printf("Predicted: 10|20: %.8f\n",mode1*sqrt(2)*(mode2*mode2+mode3*mode3+mode4*mode4+mode2*mode2*mode3*mode3+mode2*mode2*mode4*mode4+mode3*mode3*mode4*mode4));
-  printf("Predicted: 10|02: %.8f\n",mode1*sqrt(2)*(mode2*mode2+mode2*mode2*mode3*mode3+mode2*mode2*mode4*mode4));
+  //double nPairs = nModes*(nModes-1)/2;
+  std::vector<double> doubles2(nModes*nPairs*numStates*numStates);
+  for(int i=0 ; i<nModes ; i++) {
+    dof[i]->setBra(1);
+    for(int j=0 ; j<nModes ; j++) {
+      std::vector<int>diff1;
+      if(i != j)
+        diff1.push_back(i);
+      diff1.push_back(j); 
+    for(int j2=j+1 ; j2<nModes ; j2++) {
+      std::vector<int> diff2;
+      diff2.push_back(i);
+      diff2.push_back(j);
+      diff2.push_back(j2);
+      for(int l=0 ; l<potIterators.size() ; l++) {
+        for(int l2=0 ; l2<potIterators[l].size(); l2++) {
+          //single excitations 
+          for(int m=minState; m<=maxState ; m++) {
+            dof[j]->setKet(m);
 
-  double* doublesVector = &doubles[0];
-  printmat(doublesVector,nModes,nModes*statesIncluded,1.0);
+            double integralVal = 1.0;
+            for(int n=0 ; n<diff1.size() ; n++) {
+              if(dof[diff1[n]]->getBra() != dof[diff1[n]]->getKet()) {
+                bool found = false;
+                for(int n2=0 ; n2<potIterators[l][l2].size() ; n2++) {
+                  if(diff1[n]==potIterators[l][l2][n2]) {
+                    found = true;
+                    break;
+                  }
+                }
+                if(!found) {
+                  integralVal = 0;
+                  break;
+                }
+              }          
+            }
+            if(integralVal != 0) { 
+              printf("Integral: %i %i %i, Tuple Num: %i\n",i,j,m,l2);        
+              integralVal *= pot[l]->integrateTuple(l2,false);
+              singles[i*nModes*numStates+j*numStates+(m-minState)] += integralVal;
+            }
+          
+          //double excitations
+          for(int m2=minState; m2<=maxState; m2++) {
+            dof[j2]->setKet(m2);
 
+            double integralVal = 1.0;
+            for(int n=0 ; n<diff2.size() ; n++) {
+              if(dof[diff2[n]]->getBra() != dof[diff2[n]]->getKet()) {
+                bool found = false;
+                for(int n2=0 ; n2<potIterators[l][l2].size() ; n2++) {
+                  if(diff2[n]==potIterators[l][l2][n2]) {
+                    found = true;
+                    break;
+                  }
+                }
+                if(!found) {
+                  integralVal = 0;
+                  break;
+                }
+              }          
+            }
+            if(integralVal != 0) { 
+              integralVal *= pot[l]->integrateTuple(l2,false);
+              auto start = diff2.begin()+1;
+              auto end = diff2.end();
+              std::vector<int> indices(diff2.size()-1);
+              std::copy(start,end,indices.begin());
+              doubles2[i*nPairs*numStates*numStates+
+                      tupleIndexDriver(indices,nModes)*numStates*numStates+
+                      (m-minState)*numStates+
+                      (m2-minState)] += integralVal;
+            }
+
+            dof[j2]->setKet(0);
+          }
+            dof[j]->setKet(0);
+          }//m
+        }//l2
+      }//l
+    }//j2
+    }//j
+    dof[i]->setBra(0);
+  }//i
+*/
+  double mode1 = 1/sqrt(2*mass[0]*dof[0]->getOmega());
+  double mode2 = 1/sqrt(2*mass[1]*dof[1]->getOmega());
+//  double mode3 = 1/sqrt(2*mass[2]*dof[2]->getOmega());
+//  double mode4 = 1/sqrt(2*mass[3]*dof[3]->getOmega());
+
+  double* singlesVector = &singles[0];
+  printmat(singlesVector,nModes,nModes,numStates,1.0);
+
+  printf("Test\n");
+  double* singlesVector2 = &singles2[0];
+  printmat(singlesVector2,nModes,nModes,numStates,1.0);
+//  double* doublesVector = &doubles[0];
+//  printmat(doublesVector,nModes,nPairs,numStates*numStates,1.0);
+
+//  printf("Test\n");
+//  double* doublesVector2 = &doubles2[0];
+//  printmat(doublesVector2,nModes,nPairs,numStates*numStates,1.0);
 //===================End VMP2 Corrections======================
 
   //Print out all the transition frequencies

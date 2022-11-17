@@ -34,6 +34,8 @@ class Mode {
     double *getDensity();
     void setBra(int);
     void setKet(int);
+    int getBra();
+    int getKet();
     void diis(double*,double*,int);
   private:
     void setMaxElement(double*);

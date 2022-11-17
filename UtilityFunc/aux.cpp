@@ -152,45 +152,54 @@ void linsolver(double* A, double* B, int N)
         for(i=0; i<N; i++) B[i] = X[i];
 }
 
-void printmat(double* mat, int n, int m, double scale)
+void printmat(double* mat, int o, int n, int m, double scale)
 {
-int i,j;
+int i,j,k;
+for(k=0 ; k<o ; k++) {
 for(i=0; i<n; i++){
   for(j=0; j<m; j++){
-    printf("% -10.6e  ",mat[i*m+j]*scale);
+    printf("% -10.6e  ",mat[k*n*m+i*m+j]*scale);
   }
  printf("\n");
  }
 printf("\n");
 }
-
-int tupleIndexDriver(std::vector<int>& targetIndices, int nModes) {
-  int dim = indices.size();
-  std::vector<int> indices(dim); 
-  for(int i=0 ; i<dim ; i++)
-    indices[i] = i;
-  
-  return tupleIndex(0,dim,0,indices,targetIndices,nModes);
+printf("\n");
 }
 
 int tupleIndex(int& counter, int dim, int recursionLevel, std::vector<int>& indices, std::vector<int>& targetIndices, int nModes) {
   if(recursionLevel == dim-1)
-    while(iter[recursionLevel] < nModes) {
+    while(indices[recursionLevel] < nModes-1) {
       //Check if indices match
       if(indices == targetIndices)
         return counter;
       //Increment if not
-      iter[recursionLevel]++;
+      indices[recursionLevel]++;
       counter++;  
-    } else {
-      while(iter[recursionLevel] < nModes-iter.size()+recursionLevel+1) {
-        tupleIndex(counter,dim,recursionLevel+1,indices,targetIndices,nModes);
-        iter[recursionLevel]++;
-        for(int i=recursionLevel+1; i<dim ; i++) 
-          iter[i] = iter[i-1]+1;
-      }
+  } else {
+    while(indices[recursionLevel] < nModes-indices.size()+recursionLevel) {
+      tupleIndex(counter,dim,recursionLevel+1,indices,targetIndices,nModes);
+      if(indices == targetIndices)
+        return counter;
+      indices[recursionLevel]++;
+      for(int i=recursionLevel+1; i<dim ; i++) 
+        indices[i] = indices[i-1]+1;
+      counter++;
     }
   } 
   return counter;
 }
 
+int tupleIndexDriver(std::vector<int>& targetIndices, int nModes) {
+  for(int i=0 ; i<targetIndices.size() ; i++) {
+    if(targetIndices[i] > nModes-1)
+      return -1;
+  }
+  int dim = targetIndices.size();
+  std::vector<int> indices(dim); 
+  for(int i=0 ; i<dim ; i++)
+    indices[i] = i;
+  int counter = 0;
+  
+  return tupleIndex(counter,dim,0,indices,targetIndices,nModes);
+}
