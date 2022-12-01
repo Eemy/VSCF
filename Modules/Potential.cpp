@@ -335,7 +335,8 @@ std::vector<std::vector<int>> Potential::readPot(std::vector<Mode*>& dof, bool g
       //Remove equilibrium energy
       double eqEnergy = tuplePot[(potLength-1)/2];
       for(int i=0 ; i<potLength ; i++) { 
-        tuplePot[i] -= eqEnergy;
+        if(file.find("D") != 0) 
+          tuplePot[i] -= eqEnergy;
         if(file.find("D") == 0)
           tuplePot[i] *= 0.393430307; //convert from debye_to_ea0 
       }

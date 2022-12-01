@@ -92,3 +92,67 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
     return evalNeeded;
 }
 //===============================================================
+//=======================DIIS Shenanigans========================
+void EigSolver::diis(std::vector<Mode*> dof, double *F, double *E, int iter) {
+  printf("Iteration: %d\n",iter);  
+  //Make copy of current Fock Matrix to save, the one passed in can be modified
+  double *Fcopy = new double[nBasis*nBasis];
+  std::copy(F,F+(nBasis*nBasis),Fcopy);
+  setMaxElement(E);
+
+  int index;
+  if(iter>=0 && iter<diis_subspace) index = iter+1;
+  if(iter>=diis_subspace) { 
+    index = diis_subspace;
+    delete[] Fsave[iter%diis_subspace];
+    delete[] Esave[iter%diis_subspace];
+  }
+    Fsave[iter%diis_subspace] = Fcopy;
+    Esave[iter%diis_subspace] = E; 
+
+  //Extrapolate the Fock out of this thing -Justin
+  if(iter>1) { //why not iter>0?
+    //set up matrix [B11 B12 B13 ... -1.0]
+    //              [B21 B22 B23 ... -1.0]
+    //              [....................]
+    //              [-1.0-1.0-1.0 ... 0.0]
+    double *A = new double[(index+1)*(index+1)];
+    for(int i=0 ; i<index+1 ; i++) A[i*(index+1)+index] = -1.0;
+    for(int i=0 ; i<index+1 ; i++) A[index*(index+1)+i] = -1.0;
+    A[index*(index+1)+index] = 0.0;
+
+    for(int i=0 ; i<index ; i++) {
+      for(int j=0 ; j<index ; j++) {
+        A[i*(index+1)+j] = 0.0;
+        for(int k=0 ; k<nBasis*nBasis ; k++) {
+          A[i*(index+1)+j] += Esave[i][k]*Esave[j][k];//Bij
+        }
+      }
+    }
+    printmat(A,1,index+1,index+1,1.0);
+     
+    //solve for regression coeff
+    double *B = new double[index+1];
+    for(int i=0 ; i<index+1 ; i++) B[i] = 0.0;
+    B[index] = -1.0;
+    linsolver(A,B,index+1);
+
+   //use coefficients for new Fock matrix
+    for(int i=0 ; i<nBasis*nBasis ; i++) F[i] = 0.0;
+    for(int i=0 ; i<index ; i++) {
+      for(int j=0 ; j<nBasis*nBasis ; j++) {
+        F[j] += B[i]*Fsave[i][j];
+      }
+    }
+    delete[] A;
+    delete[] B;
+  }
+}
+
+void EigSolver::setMaxElement(double *array) {
+  double max = 0.0;
+  for(int i=0 ; i<nBasis*nBasis ; i++) {
+    if (max<array[i]) max=array[i];
+  }
+  maxDiisError = max;
+}

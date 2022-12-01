@@ -185,3 +185,48 @@ int stateDifference() {
   }
   return counter;
 }
+/////////////////////////Recursion Method Draft///////////////////////////
+//*pot comes with nModes and dim
+//integrals is set up as [doubles, triples, quadruples, ...]
+void fillCorrectionMatrices(Potential *pot, int minState, int maxState, std::vector<Mode*>& dof, int excitationLevel, std::vector<std::vector<double>>& integrals,  std::vector<int> tuple, int tupleIndex, int startIndex, std::vector<int> diff) {
+  if(pot->dim+1 >= excitationLevel) {
+    for(int i=startIndex ; i<dof.size() ; i++) {
+      diff.push_back(i);
+      for(int j=minState ; j<=maxState ; j++) 
+        dof[i]->setKet(j); 
+        if(integralIsNonZero(diff,tuple,dof)) {
+          integrals[excitationLevel-2][getIndex(diff,minState,maxState,excitationLevel,dof.size())] += pot->integrateTuple(tupleIndex, false);
+        }
+        fillCorrectionMatrices(pot, minState,maxState, dof, excitationLevel+1, integrals, tuples, tupleIndex, startIndex+1);
+        dof[i]->setKet(0);
+      }//state
+    }//mode
+
+  } 
+}
+
+int getIndex(std::vector<int> diff, int minState, int maxState, int excitationLevel, int nModes) {
+  int index = diff[0];  
+
+  //excited bra block
+  int numStates = maxState-minState+1;
+  for(int i=0 ; i<excitationLevel ; i++) { 
+    index *= nModes-i; 
+    index /= i+1;
+  }
+  index *= pow(numStates,excitationLevel);
+
+  //excited ket tuple
+  auto start = diff.begin()+1;
+  auto end = start+excitationLevel; 
+  std::vector<int> indices(excitationLevel);
+  std::copy(start,end,indices.begin());
+  index += tupleIndexDriver(indices,nModes)*pow(numStates,excitationLevel);
+
+  //state combinations in tuple
+  for(int i=0 ; i<diff.size() ; i++) {
+    index += (dof[diff[i]]->getKet()-minState)*pow(numStates,excitationLevel-(i+1));
+  }
+
+  return index;
+}

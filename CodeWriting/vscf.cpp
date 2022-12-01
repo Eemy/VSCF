@@ -218,10 +218,8 @@ for(int comp = 0 ; comp< 3 ; comp++) {
   //Integrate all 1D pieces
   for(int a = 0 ; a< nModes ; a++) {
     dof[a]->setBra(1);
-    dof[a]->setKet(0);
     intensityComponents[3*a+comp] += dip[comp]->integrateSlice(dof[a],a);
     dof[a]->setBra(0);
-    dof[a]->setKet(0);
     for(int b = a+1 ; b< nModes ; b++) {
       intensityComponents[3*a+comp] += dip[comp]->integrateSlice(dof[b],b)*overlaps[a];
       intensityComponents[3*b+comp] += dip[comp]->integrateSlice(dof[a],a)*overlaps[b];
@@ -235,7 +233,7 @@ for(int comp = 0 ; comp< 3 ; comp++) {
         dof[modeIndex]->setBra(1);
         dof[modeIndex]->setKet(0);
         intensityComponents[3*modeIndex+comp] += dip[3*i+comp]->getDipole(j,k); 
-        dof[modeIndex]->setBra(1);
+        dof[modeIndex]->setBra(0);
         dof[modeIndex]->setKet(0);
       }//k loop: mode indices for tuple
     }//j loop: tuples 

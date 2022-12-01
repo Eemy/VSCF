@@ -19,6 +19,7 @@ class Potential {
     std::vector<std::vector<int>> readPot(std::vector<Mode*>&, bool);
     int nPoints;
     int nModes;
+    int dim;
   private:
     class Tuplet {
       private:
@@ -55,7 +56,7 @@ class Potential {
   private: 
     std::string file;
     int minDim;
-    int dim;
+    //int dim;
     int potLength;
     std::vector<std::vector<double>> slices;
     std::vector<int> subspaces;

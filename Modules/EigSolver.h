@@ -13,6 +13,9 @@ class EigSolver {
     EigSolver(int,int);
     ~EigSolver();
     double solveMode(Mode*, std::vector<double>, int, int);
+    void diis(std::vector<Mode*>,double*,double*,int);
+  private:
+    void setMaxElement(double*);
 };
 
 #endif
