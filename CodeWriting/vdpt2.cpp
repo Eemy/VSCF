@@ -212,7 +212,17 @@ int main(int argc, char* argv[]) {
       break;
   }
 //=========================End VCIS============================
-
+  //read rmass for tests
+  std::ifstream in("rmass.dat",std::ios::in);
+  std::vector<double> mass; 
+ if(!in) {
+    printf("Error: rmass.dat could not be opened\n");
+    exit(0);
+  }
+  double val = 0.0;
+  while(in >> val) {
+    mass.push_back(val*1822.8884848961380701);
+  }
 //======================VMP2 Corrections=======================
   std::vector<double> mp2Corr(nModes);
 
@@ -356,21 +366,40 @@ int main(int argc, char* argv[]) {
     }//j
     dof[i]->setBra(0);
   }//i
+  double mode1 = 1/sqrt(2*mass[0]*dof[0]->getOmega());
+  double mode2 = 1/sqrt(2*mass[1]*dof[1]->getOmega());
+  double mode3 = 1/sqrt(2*mass[2]*dof[2]->getOmega());
+  double mode4 = 1/sqrt(2*mass[3]*dof[3]->getOmega());
 
+  printf("Predicted: 1000|1122 %.12f\n",mode2*mode3*mode3*mode4*mode4*2);
+  printf("Predicted: 0100|1122 %.12f\n",mode1*mode3*mode3*mode4*mode4*2);
+  printf("Predicted: 0010|1212 %.12f\n",mode1*mode2*mode2*mode4*mode4*2);
+  printf("Predicted: 0004|1221 %.12f\n",mode1*mode2*mode2*mode3*mode3*2);
+/*
+  printf("Singles\n");
   double *singlesVector = &singles[0];
   printmat(singlesVector,nModes,nModes,numStates,1.0);
   double *singlesVector2 = &singles2[0];
   printmat(singlesVector2,nModes,nModes,numStates,1.0);
 
+  printf("Doubles\n");
   double *doublesVector = &doubles[0];
   printmat(doublesVector,nModes,nPairs,numStates*numStates,1.0);
   double *doublesVector2 = &integrals[0][0];
   printmat(doublesVector2,nModes,nPairs,numStates*numStates,1.0);
 
+  printf("Triples\n");
   double *triplesVector = &triples[0];
   printmat(triplesVector,nModes,nTriples,numStates*numStates*numStates,1.0);
   double *triplesVector2 = &integrals[1][0];
   printmat(triplesVector2,nModes,nTriples,numStates*numStates*numStates,1.0);
+*/
+  
+  
+  printf("Quadruples\n");
+  double *quadruplesVector2 = &integrals[2][0];
+  int nQuadruples = (nModes)*(nModes-1)*(nModes-2)*(nModes-3)/24;
+  printmat(quadruplesVector2,nModes,nQuadruples,numStates*numStates*numStates*numStates,1.0);
 //===================End VMP2 Corrections======================
 
   //Print out all the transition frequencies
@@ -406,9 +435,12 @@ void fillCorrectionMatrices(Potential *pot, int minState, int maxState, std::vec
       for(int j=minState ; j<=maxState ; j++) { 
         dof[i]->setKet(j); 
         if(integralIsNonZero(diffCopy,tuple,dof)) {
+          if(excitationLevel == 3) {
+            printf("%i %i %i %i |%i %i %i %i, Index: %i, Tuple: %i\n",dof[0]->getBra(),dof[1]->getBra(),dof[2]->getBra(),dof[3]->getBra(),dof[0]->getKet(),dof[1]->getKet(),dof[2]->getKet(),dof[3]->getKet(),getIndex(diffCopy,minState,maxState,excitationLevel,dof),tupleIndex);
+          }
           integrals[excitationLevel-2][getIndex(diffCopy,minState,maxState,excitationLevel,dof)] += pot->integrateTuple(tupleIndex, false);
         }
-        fillCorrectionMatrices(pot, minState, maxState, dof, excitationLevel+1, integrals, tuple, tupleIndex, startIndex+1, diffCopy);
+        fillCorrectionMatrices(pot, minState, maxState, dof, excitationLevel+1, integrals, tuple, tupleIndex, i+1, diffCopy);
         dof[i]->setKet(0);
       }//state
     }//mode

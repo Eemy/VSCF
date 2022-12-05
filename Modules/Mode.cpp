@@ -47,7 +47,7 @@ Mode::Mode(double _omega, int _nPoints, int _conv) {
     conv = _conv;
     if(conv == 2) {
       maxDiisError = 0.0;
-      diis_subspace = 6;
+      diis_subspace = 5;
       Fsave.resize(diis_subspace);
       Esave.resize(diis_subspace); 
       density = new double[nBasis*nBasis];
@@ -96,7 +96,7 @@ void Mode::updateAllPsi_AllE(double* newPsi, double* newE) {
   waveAll = newPsi; //move pointer to another memory block
   energies = newE; 
 
-  if(conv == 2)
+  if(conv == 2) 
     updateDensity(); 
 }
 
@@ -106,6 +106,31 @@ void Mode::updateDensity() {
       density[i*nBasis+j] = waveAll[bra*nBasis+i]*waveAll[bra*nBasis+j];
     }
   }
+}
+
+void Mode::saveErrorVec(double *F, int iter) {
+  //Make copy of current Fock Matrix to save
+  double *Fcopy = new double[nBasis*nBasis];
+  std::copy(F,F+(nBasis*nBasis),Fcopy);
+
+  //Compute Error Vector
+  double *fd = new double[nBasis*nBasis];
+  double *df = new double[nBasis*nBasis]; 
+  double *error = new double[nBasis*nBasis];
+  ABmult(fd,F,density,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
+  ABmult(df,density,F,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
+  for(int i=0 ; i<nBasis*nBasis ; i++) error[i] = fd[i]-df[i]; 
+
+  //Save Fock Matrix and Error Matrix
+  if(iter>=diis_subspace) { 
+    delete[] Fsave[iter%diis_subspace];
+    delete[] Esave[iter%diis_subspace];
+  }
+  Fsave[iter%diis_subspace] = Fcopy;
+  Esave[iter%diis_subspace] = error; 
+   
+  delete[] fd;
+  delete[] df;
 }
 
 double Mode::computeMaxDiff() {

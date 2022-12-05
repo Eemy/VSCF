@@ -61,18 +61,8 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
     //printmat(H,nBasis,nBasis,1.0);    
  
     //Compute Error Vector
-    if(iter >= 0 && conv == 2) { 
-      double *density = mode->getDensity();
-      double *fd = new double[nBasis*nBasis];
-      double *df = new double[nBasis*nBasis]; 
-      double *error = new double[nBasis*nBasis];
-      ABmult(fd,H,density,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
-      ABmult(df,density,H,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
-      for(int i=0 ; i<nBasis*nBasis ; i++) error[i] = fd[i]-df[i]; 
-      mode->diis(H,error,iter);
-      delete[] fd;
-      delete[] df;
-    }
+    if(iter >= 0 && conv == 2)
+      mode->saveErrorVec(H,iter);
 
     double* evals = new double[nBasis];
     diagonalize(H,evals,nBasis); //Hamiltonian becomes eigvec matrix
@@ -94,21 +84,13 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
 //===============================================================
 //=======================DIIS Shenanigans========================
 void EigSolver::diis(std::vector<Mode*> dof, double *F, double *E, int iter) {
+/*
   printf("Iteration: %d\n",iter);  
-  //Make copy of current Fock Matrix to save, the one passed in can be modified
-  double *Fcopy = new double[nBasis*nBasis];
-  std::copy(F,F+(nBasis*nBasis),Fcopy);
   setMaxElement(E);
 
   int index;
   if(iter>=0 && iter<diis_subspace) index = iter+1;
-  if(iter>=diis_subspace) { 
-    index = diis_subspace;
-    delete[] Fsave[iter%diis_subspace];
-    delete[] Esave[iter%diis_subspace];
-  }
-    Fsave[iter%diis_subspace] = Fcopy;
-    Esave[iter%diis_subspace] = E; 
+  else index = diis_subspace;
 
   //Extrapolate the Fock out of this thing -Justin
   if(iter>1) { //why not iter>0?
@@ -147,6 +129,7 @@ void EigSolver::diis(std::vector<Mode*> dof, double *F, double *E, int iter) {
     delete[] A;
     delete[] B;
   }
+*/
 }
 
 void EigSolver::setMaxElement(double *array) {
@@ -154,5 +137,5 @@ void EigSolver::setMaxElement(double *array) {
   for(int i=0 ; i<nBasis*nBasis ; i++) {
     if (max<array[i]) max=array[i];
   }
-  maxDiisError = max;
+//  maxDiisError = max;
 }

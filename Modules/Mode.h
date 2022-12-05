@@ -36,6 +36,7 @@ class Mode {
     void setKet(int);
     int getBra();
     int getKet();
+    void saveErrorVec(double*,int);
 //    void diis(double*,double*,int);
   private:
 //    void setMaxElement(double*);
