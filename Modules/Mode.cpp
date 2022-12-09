@@ -163,6 +163,7 @@ double* Mode::getModal(int state) {
   return modal;
 }
 double Mode::getEModal(int state) {return energies[state];}
+double Mode::getEModal() {return energies[ket];}
 
 //double Mode::getAlpha() {return alpha;}
 //double Mode::getMass() {return m;}

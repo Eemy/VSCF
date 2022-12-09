@@ -14,6 +14,7 @@ class Mode {
     void updateAllPsi_AllE(double*,double*);
     double* getModal(int);
     double getEModal(int); 
+    double getEModal();
 //    double* getWaveFcn();
 //    double* getGState(); 
 //    double* getEState(); 

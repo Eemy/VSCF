@@ -18,7 +18,7 @@
 #define au_to_wn 219474.6313708
 //////////////////////////////////////////////////////////////////////
 
-void fillCorrectionMatrices(Potential *pot, int minState, int maxState, std::vector<Mode*>& dof, int excitationLevel, std::vector<std::vector<double>>& integrals,  std::vector<int> tuple, int tupleIndex, int startIndex, std::vector<int> diff);
+void fillCorrectionMatrices(Potential *pot, int minState, int maxState, std::vector<Mode*>& dof, int excitationLevel, std::vector<std::vector<double>>& integrals,  std::vector<int> tuple, int tupleIndex, int startIndex, std::vector<int> diff, std::vector<std::vector<double>>& denominators, std::vector<double>& excitedEnergies);
 int getIndex(std::vector<int> diff, int minState, int maxState, int excitationLevel, std::vector<Mode*> dof);
 bool integralIsNonZero(std::vector<int> diff, std::vector<int> tuple, std::vector<Mode*>& dof); 
 void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv);
@@ -211,13 +211,14 @@ int main(int argc, char* argv[]) {
     if(counter==nModes)
       break;
   }
+//need to save where the corresponding eigvec coefficients are for CI coeff and mp2 correction summing
 //=========================End VCIS============================
 
 //======================VMP2 Corrections=======================
   std::vector<double> mp2Corr(nModes);
 
   //perturbation is total - effV
-  int maxState = 3;
+  int maxState = 4;
   int minState = 1;
   int numStates = maxState-minState+1;
 
@@ -229,7 +230,9 @@ int main(int argc, char* argv[]) {
   }  
 
   std::vector<double> singles(nModes*nModes*numStates);
+  std::vector<double> singlesDenom(nModes*nModes*numStates);
   std::vector<std::vector<double>> integrals;
+  std::vector<std::vector<double>> denominators;
   for(int i=0 ; i<maxDim ; i++) {
     int excitationLevel = i+2;
     int size = nModes;
@@ -239,7 +242,9 @@ int main(int argc, char* argv[]) {
     }
     size *= pow(numStates,excitationLevel);
     std::vector<double> integral(size);
+    std::vector<double> denominator(size);
     integrals.push_back(integral);
+    denominators.push_back(denominator);
   } 
   for(int i=0 ; i<nModes ; i++) {
     dof[i]->setBra(1);
@@ -251,17 +256,19 @@ int main(int argc, char* argv[]) {
         std::vector<int> diff1;
         diff1.push_back(i);
         diff1.push_back(k);
-//        int singlesMin = minState>1 ? minState:2;//remove degenerate subspace
         for(int l=minState ; l<=maxState ; l++) {
           dof[k]->setKet(l);
-          if(integralIsNonZero(diff1,potIterators[j][j2],dof)) { 
+          if(l>1 && integralIsNonZero(diff1,potIterators[j][j2],dof)) { 
             double integralVal = pot[j]->integrateTuple(j2,false);
+            int index = i*nModes*numStates+k*numStates+(l-minState);
 //            printf("Integral: %i %i State: %i, Tuple Num: %i Val: %.12f\n",i,k,l,j2,integralVal);   
-            singles[i*nModes*numStates+k*numStates+(l-minState)] += integralVal;
+            singles[index] += integralVal;
+            if(singlesDenom[index] == 0.0)
+              singlesDenom[index] = excitedEnergies[i+1]-(excitedEnergies[0]+(dof[k]->getEModal()-dof[k]->getEModal(0)));
           }
 
           //Double+ Excitations
-          fillCorrectionMatrices(pot[j], minState, maxState, dof, 2, integrals, potIterators[j][j2], j2, k+1, diff1);
+          fillCorrectionMatrices(pot[j], minState, maxState, dof, 2, integrals, potIterators[j][j2], j2, k+1, diff1, denominators, excitedEnergies);
           dof[k]->setKet(0);
         }//l
       }//k
@@ -269,6 +276,42 @@ int main(int argc, char* argv[]) {
     }//j
     dof[i]->setBra(0);
   }//i
+
+  //VMP2 Corrections square the integrals and include denominator
+  for(int i=0 ; i<nModes ; i++) {
+    int blockSize = singles.size()/nModes; 
+    for(int j=0 ; j<blockSize ; j++) {
+      if(singles[i*blockSize+j] != 0.0) 
+        mp2Corr[i] += singles[i*blockSize+j]*singles[i*blockSize+j]/singlesDenom[i*blockSize+j];
+    }
+    for(int j=0 ; j<integrals.size() ; j++) {
+      blockSize = integrals[j].size()/nModes;
+      for(int k=0 ; k<blockSize ; k++) {
+        if(integrals[j][i*blockSize+k] != 0.0) 
+          mp2Corr[i] += integrals[j][i*blockSize+k]*integrals[j][i*blockSize+k]/denominators[j][i*blockSize+k]; 
+      }
+    }
+  } 
+
+  printf("Singles\n");
+  double *singlesVector = &singles[0];
+  printmat(singlesVector,nModes,nModes,numStates,1.0);
+  double *singlesDenomVec = &singlesDenom[0];
+  printmat(singlesDenomVec,nModes,nModes,numStates,1.0);
+
+  printf("Doubles\n");
+  double *doublesVector = &integrals[0][0];
+  int nPairs = nModes*(nModes-1)/2;
+  printmat(doublesVector,nModes,nPairs,numStates*numStates,1.0);
+  double *doublesDenomVec = &denominators[0][0];
+  printmat(doublesDenomVec,nModes,nPairs,numStates*numStates,1.0);
+
+  printf("Triples\n");
+  double *triplesVector = &integrals[0][1];
+  int nTriples = nModes*(nModes-1)*(nModes-2)/6;
+  printmat(triplesVector,nModes,nTriples,numStates*numStates*numStates,1.0);
+  double *triplesDenomVec = &denominators[0][1];
+  printmat(triplesDenomVec,nModes,nTriples,numStates*numStates*numStates,1.0);
 //===================End VMP2 Corrections======================
 
   //Print out all the transition frequencies
@@ -281,7 +324,8 @@ int main(int argc, char* argv[]) {
   print(results,"  Harmonic        CIS(1)            Intensity(km/mol)\n");
   for(int i=0; i<nModes ; i++) {
 //  fprintf(results," % -15.4f % -15.4f % -15.4f \n", freq[i],(excitedEnergies[i+1]-excitedEnergies[0])*(au_to_wn),intensities[i]);
-    fprintf(results," % -15.4f % -15.4f % \n", freq[i],(excitedEnergies[i+1]-excitedEnergies[0])*(au_to_wn));
+    fprintf(results," % -15.4f % -15.4f % \n", freq[i],(excitedEnergies[i+1]-excitedEnergies[0]+mp2Corr[i])*(au_to_wn));
+//    fprintf(results," % -15.4f % -15.4f % \n", freq[i],(excitedEnergies[i+1]-excitedEnergies[0])*(au_to_wn));
 
   }
 
@@ -296,7 +340,7 @@ int main(int argc, char* argv[]) {
 }//end main
 
 //==========================HELPER METHODS=============================
-void fillCorrectionMatrices(Potential *pot, int minState, int maxState, std::vector<Mode*>& dof, int excitationLevel, std::vector<std::vector<double>>& integrals,  std::vector<int> tuple, int tupleIndex, int startIndex, std::vector<int> diff) {
+void fillCorrectionMatrices(Potential *pot, int minState, int maxState, std::vector<Mode*>& dof, int excitationLevel, std::vector<std::vector<double>>& integrals,  std::vector<int> tuple, int tupleIndex, int startIndex, std::vector<int> diff, std::vector<std::vector<double>>& denominators, std::vector<double>& excitedEnergies) {
   if(pot->dim+1 >= excitationLevel) {
     for(int i=startIndex ; i<dof.size() ; i++) {
       std::vector<int> diffCopy = diff; //copy diff
@@ -304,12 +348,17 @@ void fillCorrectionMatrices(Potential *pot, int minState, int maxState, std::vec
       for(int j=minState ; j<=maxState ; j++) { 
         dof[i]->setKet(j); 
         if(integralIsNonZero(diffCopy,tuple,dof)) {
-          if(excitationLevel == 3) {
-            printf("%i %i %i %i |%i %i %i %i, Index: %i, Tuple: %i\n",dof[0]->getBra(),dof[1]->getBra(),dof[2]->getBra(),dof[3]->getBra(),dof[0]->getKet(),dof[1]->getKet(),dof[2]->getKet(),dof[3]->getKet(),getIndex(diffCopy,minState,maxState,excitationLevel,dof),tupleIndex);
+          int index = getIndex(diffCopy,minState,maxState,excitationLevel,dof);
+          integrals[excitationLevel-2][index] += pot->integrateTuple(tupleIndex, false);
+          if(denominators[excitationLevel-2][index] == 0) { 
+            std::vector<int> indices(&diffCopy[1],&(*diffCopy.end()));
+            double denominator = excitedEnergies[diffCopy[0]]-excitedEnergies[0];
+            for(int a=0 ; a<indices.size() ; a++)
+              denominator -= dof[indices[a]]->getEModal()-dof[indices[a]]->getEModal(0); 
+            denominators[excitationLevel-2][index] = denominator; 
           }
-          integrals[excitationLevel-2][getIndex(diffCopy,minState,maxState,excitationLevel,dof)] += pot->integrateTuple(tupleIndex, false);
         }
-        fillCorrectionMatrices(pot, minState, maxState, dof, excitationLevel+1, integrals, tuple, tupleIndex, i+1, diffCopy);
+        fillCorrectionMatrices(pot, minState, maxState, dof, excitationLevel+1, integrals, tuple, tupleIndex, i+1, diffCopy, denominators, excitedEnergies);
         dof[i]->setKet(0);
       }//state
     }//mode
