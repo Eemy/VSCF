@@ -42,6 +42,7 @@ Mode::Mode(double _omega, int _nPoints, int _conv) {
       }
       norm[i] = 1/(sqrt(pow(2.0,i)*factorial(i)))*pow(1/pi,0.25);
     }
+    density = new double[nBasis*nBasis];
 
     //DIIS Set-up
     conv = _conv;
@@ -50,7 +51,6 @@ Mode::Mode(double _omega, int _nPoints, int _conv) {
       diis_subspace = 5;
       Fsave.resize(diis_subspace);
       Esave.resize(diis_subspace); 
-      density = new double[nBasis*nBasis];
     }
 }
 
@@ -67,12 +67,13 @@ Mode::~Mode() {
   delete[] waveAll;
   delete[] waveAll_prev;
   delete[] energies;
-  for(int i=0 ; i<diis_subspace ; i++) {
-    delete[] Fsave[i];
-    delete[] Esave[i];
+  delete[] density;
+  if(conv == 2) {
+    for(int i=0 ; i<diis_subspace ; i++) {
+      delete[] Fsave[i];
+      delete[] Esave[i];
+    }
   }
-  if(conv == 2)
-    delete[] density;
 }
 
 //===================================================================
@@ -96,16 +97,19 @@ void Mode::updateAllPsi_AllE(double* newPsi, double* newE) {
   waveAll = newPsi; //move pointer to another memory block
   energies = newE; 
 
-  if(conv == 2) 
-    updateDensity(); 
+  updateDensity(); 
 }
 
 void Mode::updateDensity() {
   for(int i=0 ; i<nBasis ; i++) {
     for(int j=0 ; j<nBasis ; j++) {
-      density[i*nBasis+j] = waveAll[bra*nBasis+i]*waveAll[bra*nBasis+j];
+      if(vscfStates)
+        density[i*nBasis+j] = vscfPsi[bra*nBasis+i]*vscfPsi[ket*nBasis+j];
+      else       
+        density[i*nBasis+j] = waveAll[bra*nBasis+i]*waveAll[ket*nBasis+j];
     }
   }
+  
 }
 
 void Mode::saveErrorVec(double *F, int iter) {
@@ -175,11 +179,34 @@ double Mode::getHerm(int herm, int point) {return hermiteEval[herm*nPoints+point
 double Mode::getNorm(int index) {return norm[index];}
 double Mode::getDIISError() {return maxDiisError;}
 double* Mode::getDensity() {return density;}
-void Mode::setBra(int _bra) {bra = _bra;}
-void Mode::setKet(int _ket) {ket = _ket;}
+void Mode::setBra(int _bra) {
+  if(vscfStates && _bra>1) {
+    printf("Error: No existing VSCF states above 1 quanta.\n"); 
+    exit(0);
+  }
+  bra = _bra; 
+  updateDensity();
+}
+void Mode::setKet(int _ket) {
+  if(vscfStates && _ket>1) {
+    printf("Error: No existing VSCF states above 1 quanta.\n"); 
+    exit(0);
+  }
+  ket = _ket; 
+  updateDensity();
+}
 int Mode::getBra() {return bra;}
 int Mode::getKet() {return ket;}
-void Mode::useVSCFStates(bool use) {vscfStates = use;}
+void Mode::useVSCFStates(bool use) {
+  vscfStates = use;
+  if(vscfStates && (bra>1 || ket>1)) {
+    printf("Error: No existing VSCF states above 1 quanta. Change bra and ket and try again.\n"); 
+    vscfStates = false;
+    exit(0);
+  }
+  updateDensity(); 
+}
+
 void Mode::setHarmonic() {
   double* harmPsi = new double[nBasis*nBasis];
   for(int i=0 ; i<nBasis ; i++) {
@@ -206,15 +233,17 @@ void Mode::setAnharmonic() {
     printf("setHarmonic() was never called or there are no available anharmonic states.\n");
   }
 }
-//====================FOR EFFECTIVE POTENTIAL=======================
+//====================FOR EFFECTIVE POTENTIAL======================
 double Mode::getIntegralComponent(int point) {
+/*
+  double braIntegral = 0.0;
+  double ketIntegral = 0.0;
+
   if(vscfStates) {
     if(bra > 1 || ket > 1) {
       printf("Error: No existing VSCF states above 1 quanta of excitation.\n"); 
       exit(0);
     }
-    double braIntegral = 0.0;
-    double ketIntegral = 0.0;
     for(int i=0 ; i<nBasis ; i++) {
       braIntegral += hermiteEval[i*nPoints+point]*norm[i]*vscfPsi[bra*nBasis+i];
       ketIntegral += hermiteEval[i*nPoints+point]*norm[i]*vscfPsi[ket*nBasis+i];
@@ -223,12 +252,18 @@ double Mode::getIntegralComponent(int point) {
   }
 
   //Else use modal states
-  double braIntegral = 0.0;
-  double ketIntegral = 0.0;
   for(int i=0 ; i<nBasis ; i++) {
     braIntegral += hermiteEval[i*nPoints+point]*norm[i]*waveAll[bra*nBasis+i];
     ketIntegral += hermiteEval[i*nPoints+point]*norm[i]*waveAll[ket*nBasis+i];
   }
   return braIntegral*ketIntegral;
+*/
+  double integralComponent = 0.0;
+  for(int i=0 ; i<nBasis ; i++) {
+    for(int j=0 ; j<nBasis ; j++) {
+      integralComponent += density[i*nBasis+j]*hermiteEval[i*nPoints+point]*norm[i]*hermiteEval[j*nPoints+point]*norm[j];
+    }
+  }
+  return integralComponent*weights[point];
 }
 

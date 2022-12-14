@@ -237,10 +237,10 @@ double Potential::Tuplet::getIntegral(int startIndex, int endIndex, int coupling
   //Base Case: 1D
   if(potSize == nPoints) {
     for(int i=0 ; i<nPoints ; i++) {
-      integralValue += psi[couplingDegree-1]->getIntegralComponent(i)*potential[startIndex+i]*psi[couplingDegree-1]->getWeight(i);
+      integralValue += psi[couplingDegree-1]->getIntegralComponent(i)*potential[startIndex+i];
     }
     for(int i=0 ; i<couplingDegree-1 ; i++) {
-      integralValue *= psi[i]->getIntegralComponent(weightMarkers[i])*psi[i]->getWeight(weightMarkers[i]);
+      integralValue *= psi[i]->getIntegralComponent(weightMarkers[i]);
     }
   } else {
     int newPotSize = potSize/nPoints;
