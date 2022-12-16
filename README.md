@@ -4,6 +4,7 @@
 # Three Folders:
 ## CodeWriting ##
 The key script is writeVSCF.csh here. It basically concatenates vscfFragment1.cpp, calls vscfWriter.cpp to write the body of the vscf code, then slaps on vscfFragment2.cpp at the end. It then compiles this final script called vscf.cpp and runs it. 
+
 UPDATE: This part of the code was overhauled. Check the 'revamp' branch for more user-friendly code.
 
 ## Modules ##
