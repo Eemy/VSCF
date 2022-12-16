@@ -15,9 +15,6 @@ Lapack libraries for diagonalization and matrix multiplication, other gauher rou
 
 *IF YOU ARE LOOKING TO UNDERSTAND HOW ALL MY CODE COMES TOGETHER, YOU SHOULD READ THROUGH VSCF.CPP (sample file that was written and left outside of the folders) AND SEE HOW THE OBJECTS ARE USED IN THE MAIN BODY. THEN DIG INTO THE OBJECTS IN MY SOURCE CODE FOLDER AND FIGURE OUT WHAT THOSE FUNCTIONS ARE REALLY DOING UNDER THE HOOD. 
 
-*THIS IS THE BEAUTY OF OOP, THERE IS A LOT OF ABSTRACTION IN THE CODE. VSCF.CPP SEEMS RELATIVELY SIMPLE AS IT SEEMS TO JUST BE INITIALIZING OBJECTS, LOOPING, AND CALLING FUNCTIONS. 
-
-
 ## IMPORTANT: Linking github to CHPC ##
 You will need to add an SSH key to your github account
 1. Type on cmd line: ssh-keygen -t rsa -b 4096 -C "\<UNID\>@kingspeak.chpc.utah.edu"
