@@ -13,7 +13,7 @@ double mass_au  = 1822.8884848961380701;
 Mode::Mode(double _omega, int _nPoints, int _conv) {
     omega = _omega/au_to_wn;
     nPoints = _nPoints;
-    nBasis = nPoints-1;
+    nBasis = nPoints-5;
 
     //Hold modals (VMP2)
     energies = NULL; 
@@ -47,30 +47,27 @@ Mode::Mode(double _omega, int _nPoints, int _conv) {
     //DIIS Set-up
     conv = _conv;
     if(conv == 2) {
-      maxDiisError = 0.0;
       diis_subspace = 5;
-      Fsave.resize(diis_subspace);
-      Esave.resize(diis_subspace); 
+//      Fsave.resize(diis_subspace);
+//      Dsave.resize(diis_subspace);
+//      Esave.resize(diis_subspace); 
     }
 }
 
 Mode::~Mode() {
-//  delete[] waveFcn;
-//  delete[] oldWaveFcn;
   delete[] weights;
   delete[] points;
   delete[] hermiteEval;
   delete[] norm;
-//  delete[] groundState;
-//  delete[] excitedState;
   delete[] vscfPsi;
   delete[] waveAll;
   delete[] waveAll_prev;
   delete[] energies;
   delete[] density;
   if(conv == 2) {
-    for(int i=0 ; i<diis_subspace ; i++) {
-      delete[] Fsave[i];
+    for(int i=0 ; i<Dsave.size() ; i++) {
+//      delete[] Fsave[i];
+      delete[] Dsave[i];
       delete[] Esave[i];
     }
   }
@@ -109,13 +106,25 @@ void Mode::updateDensity() {
         density[i*nBasis+j] = waveAll[bra*nBasis+i]*waveAll[ket*nBasis+j];
     }
   }
-  
+}
+
+void Mode::extrapolateDensity(double *coeff) {
+  for(int i=0 ; i<nBasis*nBasis ; i++) density[i] = 0.0;
+  for(int i=0 ; i<Dsave.size() ; i++) {
+    for(int j=0 ; j<nBasis*nBasis ; j++) {
+      density[j] += coeff[i]*Dsave[i][j];
+    }
+  }
 }
 
 void Mode::saveErrorVec(double *F, int iter) {
-  //Make copy of current Fock Matrix to save
+/*  //Make copy of current Fock Matrix to save
   double *Fcopy = new double[nBasis*nBasis];
-  std::copy(F,F+(nBasis*nBasis),Fcopy);
+  std::copy(F,F+(nBasis*nBasis),Fcopy);*/
+
+  //Make copy of current density Matrix to save
+  double *Dcopy = new double[nBasis*nBasis];
+  std::copy(density,density+(nBasis*nBasis),Dcopy);
 
   //Compute Error Vector
   double *fd = new double[nBasis*nBasis];
@@ -125,16 +134,59 @@ void Mode::saveErrorVec(double *F, int iter) {
   ABmult(df,density,F,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
   for(int i=0 ; i<nBasis*nBasis ; i++) error[i] = fd[i]-df[i]; 
 
+////debug
+  printf("EigVecs\n");
+  printmat(waveAll,1,nBasis,nBasis,1.0);
+  printf("Density Matrix\n");
+  printmat(density,1,nBasis,nBasis,1.0);
+  printf("Fock Matrix\n");
+  printmat(F,1,nBasis,nBasis,1.0);
+  printf("Error Matrix\n");
+  printmat(error,1,nBasis,nBasis,1.0);
+////debug
+
   //Save Fock Matrix and Error Matrix
   if(iter>=diis_subspace) { 
-    delete[] Fsave[iter%diis_subspace];
+//    delete[] Fsave[iter%diis_subspace];
+//    Fsave[iter%diis_subspace] = Fcopy;
+    delete[] Dsave[iter%diis_subspace];
     delete[] Esave[iter%diis_subspace];
+    Dsave[iter%diis_subspace] = Dcopy;
+    Esave[iter%diis_subspace] = error; 
+  } else {
+    Dsave.push_back(Dcopy);
+    Esave.push_back(error);
   }
-  Fsave[iter%diis_subspace] = Fcopy;
-  Esave[iter%diis_subspace] = error; 
+  
+  setMaxElement(error);  
    
   delete[] fd;
   delete[] df;
+}
+
+double Mode::dotErrorVecs(int i, int j) {
+  double sum = 0.0;
+  for(int k=0 ; k<nBasis*nBasis ; k++) {
+    sum += Esave[i][k]*Esave[j][k];
+  }
+  return sum;
+}
+
+void Mode::resetSubspace() {
+  for(int i=0 ; i<Dsave.size() ; i++) {
+    delete[] Dsave[i];
+    delete[] Esave[i];
+  }
+  Dsave.resize(0);
+  Esave.resize(0);
+}
+
+void Mode::setMaxElement(double *array) {
+  double max = 0.0;
+  for(int i=0 ; i<nBasis*nBasis ; i++) {
+    if (max<array[i]) max=array[i];
+  }
+  maxDiisError = max;
 }
 
 double Mode::computeMaxDiff() {
@@ -168,6 +220,8 @@ double* Mode::getModal(int state) {
 }
 double Mode::getEModal(int state) {return energies[state];}
 double Mode::getEModal() {return energies[ket];}
+int Mode::getNumErrorVecs() {return Esave.size();}
+double Mode::getDIISError() {return maxDiisError;}
 
 //double Mode::getAlpha() {return alpha;}
 //double Mode::getMass() {return m;}
@@ -177,7 +231,6 @@ int Mode::getNPoints() {return nPoints;}
 double Mode::getWeight(int index) {return weights[index];}
 double Mode::getHerm(int herm, int point) {return hermiteEval[herm*nPoints+point];}
 double Mode::getNorm(int index) {return norm[index];}
-double Mode::getDIISError() {return maxDiisError;}
 double* Mode::getDensity() {return density;}
 void Mode::setBra(int _bra) {
   if(vscfStates && _bra>1) {
@@ -235,29 +288,6 @@ void Mode::setAnharmonic() {
 }
 //====================FOR EFFECTIVE POTENTIAL======================
 double Mode::getIntegralComponent(int point) {
-/*
-  double braIntegral = 0.0;
-  double ketIntegral = 0.0;
-
-  if(vscfStates) {
-    if(bra > 1 || ket > 1) {
-      printf("Error: No existing VSCF states above 1 quanta of excitation.\n"); 
-      exit(0);
-    }
-    for(int i=0 ; i<nBasis ; i++) {
-      braIntegral += hermiteEval[i*nPoints+point]*norm[i]*vscfPsi[bra*nBasis+i];
-      ketIntegral += hermiteEval[i*nPoints+point]*norm[i]*vscfPsi[ket*nBasis+i];
-    }
-    return braIntegral*ketIntegral;
-  }
-
-  //Else use modal states
-  for(int i=0 ; i<nBasis ; i++) {
-    braIntegral += hermiteEval[i*nPoints+point]*norm[i]*waveAll[bra*nBasis+i];
-    ketIntegral += hermiteEval[i*nPoints+point]*norm[i]*waveAll[ket*nBasis+i];
-  }
-  return braIntegral*ketIntegral;
-*/
   double integralComponent = 0.0;
   for(int i=0 ; i<nBasis ; i++) {
     for(int j=0 ; j<nBasis ; j++) {

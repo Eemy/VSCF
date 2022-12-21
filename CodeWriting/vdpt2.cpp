@@ -278,6 +278,25 @@ int main(int argc, char* argv[]) {
   }//i
 
   //VMP2 Corrections square the integrals and include denominator
+
+  for(int i=0 ; i<nModes ; i++) {
+    int blockSize = singles.size()/nModes;
+    for(int j=0 ; j<nModes ; j++) {
+      for(int k=0 ; k<blockSize ; k++) {
+        mp2Corr[i] += CI[i*nModes+j]*singles[j*blockSize+k];
+      }
+    }
+    for(int j=0 ; j<integrals.size() ; j++) {
+      blockSize = integrals[j].size()/nModes;
+      for(int k=0 ; k<nModes ; k++) {
+        for(int l=0 ; l<blockSize ; l++) {
+          mp2Corr[i] += CI[i*nModes+k]*integrals[j][k*blockSize+l];
+        }
+      }
+    } 
+  }
+
+/*
   for(int i=0 ; i<nModes ; i++) {
     int blockSize = singles.size()/nModes; 
     for(int j=0 ; j<blockSize ; j++) {
@@ -292,7 +311,7 @@ int main(int argc, char* argv[]) {
       }
     }
   } 
-
+*/
   printf("Singles\n");
   double *singlesVector = &singles[0];
   printmat(singlesVector,nModes,nModes,numStates,1.0);

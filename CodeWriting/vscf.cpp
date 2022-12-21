@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
   std::vector<int> potDims;
   potDims.push_back(atoi(argv[8])); //arg8
 
-/////////////////////////Create Mode, EigSolver, Potential Objects////////////////////////
+/////////////////Create Mode, EigSolver, Potential Objects///////////////////
   std::vector<Mode*> dof;
   std::vector<double> freq;
   readin(dof,freq,nModes,nPoints, conv); 
@@ -92,8 +92,8 @@ int main(int argc, char* argv[]) {
   std::vector<double> overlaps(nModes);
 
   //Open results file once all set-up is completed
-  FILE *results = fopen("eemVSCF_corr.dat","w");
-//====================================Begin VSCF============================================
+  FILE *results = fopen("eemVSCF_diis.dat","w");
+//===============================Begin VSCF==================================
   //Prepare: eigensolver on pure 1D slices for each mode
   for(int i = 0 ; i< nModes ; i++) {
     prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);//-1 prevents DIIS
@@ -115,6 +115,7 @@ int main(int argc, char* argv[]) {
     //Compute VSCF Energy
     double energy = 0.0;
     for(int i = 0 ; i< nModes ; i++) {
+      printf("Mode %i\n",i);
       energy += solver.solveMode(dof[i],effV[i],0,iter);//iter instead of -1 allow DIIS to occur
     } 
 
@@ -124,6 +125,10 @@ int main(int argc, char* argv[]) {
         energy -= pot[i]->integrateTuple(j,true);
       }
     }
+
+    //CALL DIIS: solve for coefficients and obtain extrapolated density matrix
+    if(conv==2)
+      solver.diis(dof);
 
     //Check for Convergence
     if(checkConvergence(dof,energy,conv)) {
@@ -142,6 +147,8 @@ int main(int argc, char* argv[]) {
 ///////End Ground-State VSCF/////////
   for(int i = 0 ; i< nModes ; i++) {
     dof[i]->setGroundState();
+    if(conv==2)
+      dof[i]->resetSubspace();
   }
 /////////Excited-State VSCF//////////
 for(int z = 0 ; z< nModes ; z++) {
@@ -188,6 +195,10 @@ for(int z = 0 ; z< nModes ; z++) {
       }
     }
 
+    //CALL DIIS: solve for coefficients and obtain extrapolated density matrix
+    if(conv==2)
+      solver.diis(dof);
+
     //Check for Convergence
     if(checkConvergence(dof,energy,conv)) {
       fprintf(results,"Converged at iteration %d\n",iter+1);
@@ -205,6 +216,10 @@ for(int z = 0 ; z< nModes ; z++) {
   dof[z]->setExcitedState();
   dof[z]->setBra(0);
   dof[z]->setKet(0);
+  if(conv==2) {
+    for(int i=0 ; i<dof.size() ; i++)
+      dof[i]->resetSubspace(); 
+  }
 }//z loop: excited mode
 ////////End Excited-State VSCF///////
 
@@ -311,7 +326,8 @@ bool checkConvergence(std::vector<Mode*> dof, double energy, int conv) {
         max = dof[i]->getDIISError();
     }
     printf("ConvCheck: %.12f\n",max);
-    return (max < 1.0e-10);
+    printf("Energy: %.12f\n",energy);
+    return (max < 1.0e-14);
   }
 }
 void print(FILE* script, std::string line) {

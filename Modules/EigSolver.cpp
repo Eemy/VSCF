@@ -8,7 +8,7 @@
 
 EigSolver::EigSolver(int _nPoints, int _conv) {
   nPoints = _nPoints;
-  nBasis = nPoints-1;
+  nBasis = nPoints-5;
   T = new double[(nBasis+2)*(nBasis+2)];
   buildTmat();
 
@@ -83,31 +83,29 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
 }
 //===============================================================
 //=======================DIIS Shenanigans========================
-void EigSolver::diis(std::vector<Mode*> dof, double *F, double *E, int iter) {
+void EigSolver::diis(std::vector<Mode*> dof) {
 /*
   printf("Iteration: %d\n",iter);  
   setMaxElement(E);
-
-  int index;
-  if(iter>=0 && iter<diis_subspace) index = iter+1;
-  else index = diis_subspace;
+*/
+  int index = dof[0]->getNumErrorVecs();
 
   //Extrapolate the Fock out of this thing -Justin
-  if(iter>1) { //why not iter>0?
+  if(index>=2) { //why not iter>0?
     //set up matrix [B11 B12 B13 ... -1.0]
     //              [B21 B22 B23 ... -1.0]
     //              [....................]
     //              [-1.0-1.0-1.0 ... 0.0]
     double *A = new double[(index+1)*(index+1)];
+    for(int i=0 ; i<(index+1)*(index+1) ; i++) A[i] = 0.0;
     for(int i=0 ; i<index+1 ; i++) A[i*(index+1)+index] = -1.0;
     for(int i=0 ; i<index+1 ; i++) A[index*(index+1)+i] = -1.0;
     A[index*(index+1)+index] = 0.0;
 
-    for(int i=0 ; i<index ; i++) {
-      for(int j=0 ; j<index ; j++) {
-        A[i*(index+1)+j] = 0.0;
-        for(int k=0 ; k<nBasis*nBasis ; k++) {
-          A[i*(index+1)+j] += Esave[i][k]*Esave[j][k];//Bij
+    for(int a=0 ; a<dof.size() ; a++) {
+      for(int i=0 ; i<index ; i++) {
+        for(int j=0 ; j<index ; j++) {
+          A[i*(index+1)+j] += dof[a]->dotErrorVecs(i,j);
         }
       }
     }
@@ -119,23 +117,19 @@ void EigSolver::diis(std::vector<Mode*> dof, double *F, double *E, int iter) {
     B[index] = -1.0;
     linsolver(A,B,index+1);
 
-   //use coefficients for new Fock matrix
-    for(int i=0 ; i<nBasis*nBasis ; i++) F[i] = 0.0;
-    for(int i=0 ; i<index ; i++) {
-      for(int j=0 ; j<nBasis*nBasis ; j++) {
-        F[j] += B[i]*Fsave[i][j];
-      }
+    printmat(B,1,1,index+1,1.0);
+
+    //use coefficients for new density matrix
+    for(int a=0 ; a<dof.size() ; a++) {
+      dof[a]->extrapolateDensity(B);
     }
+    //for(int i=0 ; i<nBasis*nBasis ; i++) F[i] = 0.0;
+    //for(int i=0 ; i<index ; i++) {
+    //  for(int j=0 ; j<nBasis*nBasis ; j++) {
+    //    F[j] += B[i]*Fsave[i][j];
+    //  }
+    //}
     delete[] A;
     delete[] B;
   }
-*/
-}
-
-void EigSolver::setMaxElement(double *array) {
-  double max = 0.0;
-  for(int i=0 ; i<nBasis*nBasis ; i++) {
-    if (max<array[i]) max=array[i];
-  }
-//  maxDiisError = max;
 }

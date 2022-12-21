@@ -31,16 +31,20 @@ class Mode {
     void setAnharmonic();
     double getIntegralComponent(int);
 //    double getPoint(int);
-    double getDIISError();
     double *getDensity();
     void setBra(int);
     void setKet(int);
     int getBra();
     int getKet();
     void saveErrorVec(double*,int);
+    int getNumErrorVecs();
+    double dotErrorVecs(int, int);
+    void resetSubspace();
+    void extrapolateDensity(double *);
 //    void diis(double*,double*,int);
-  private:
-//    void setMaxElement(double*);
+    double getDIISError();
+ private:
+    void setMaxElement(double*);
     void updateDensity();
 
     double omega;
@@ -63,12 +67,13 @@ class Mode {
     bool harm;
     int bra;
     int ket;
-
+  
+    double maxDiisError;
     int conv;
-    std::vector<double*> Fsave;
+//    std::vector<double*> Fsave;
+    std::vector<double*> Dsave;
     std::vector<double*> Esave; 
     double* density;
-    double maxDiisError;
     int diis_subspace;
 };
 
