@@ -268,8 +268,8 @@ double Potential::integrateTuple(int index, bool correction) {
   return integral;
 }
 
-double Potential::getDipole(int index, int excitedModeIndex) {
-  return tuplets[index]->getTotalIntegral(excitedModeIndex);
+double Potential::getDipole(int index) {
+  return tuplets[index]->getTotalIntegral(false);
 }
 
 double Potential::integrateSlice(Mode* mode, int modeIndex) {
@@ -335,7 +335,7 @@ std::vector<std::vector<int>> Potential::readPot(std::vector<Mode*>& dof, bool g
       //Remove equilibrium energy
       double eqEnergy = tuplePot[(potLength-1)/2];
       for(int i=0 ; i<potLength ; i++) { 
-        if(file.find("D") != 0) 
+        //if(file.find("D") != 0) 
           tuplePot[i] -= eqEnergy;
         if(file.find("D") == 0)
           tuplePot[i] *= 0.393430307; //convert from debye_to_ea0 

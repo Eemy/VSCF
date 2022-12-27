@@ -247,7 +247,7 @@ for(int comp = 0 ; comp< 3 ; comp++) {
         int modeIndex = dipIterators[3*i+comp][j][k];
         dof[modeIndex]->setBra(1);
         dof[modeIndex]->setKet(0);
-        intensityComponents[3*modeIndex+comp] += dip[3*i+comp]->getDipole(j,k); 
+        intensityComponents[3*modeIndex+comp] += dip[3*i+comp]->getDipole(j); 
         dof[modeIndex]->setBra(0);
         dof[modeIndex]->setKet(0);
       }//k loop: mode indices for tuple

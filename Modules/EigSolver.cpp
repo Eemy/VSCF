@@ -8,7 +8,7 @@
 
 EigSolver::EigSolver(int _nPoints, int _conv) {
   nPoints = _nPoints;
-  nBasis = nPoints-5;
+  nBasis = nPoints-1;
   T = new double[(nBasis+2)*(nBasis+2)];
   buildTmat();
 

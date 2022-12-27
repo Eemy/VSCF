@@ -13,7 +13,7 @@ double mass_au  = 1822.8884848961380701;
 Mode::Mode(double _omega, int _nPoints, int _conv) {
     omega = _omega/au_to_wn;
     nPoints = _nPoints;
-    nBasis = nPoints-5;
+    nBasis = nPoints-1;
 
     //Hold modals (VMP2)
     energies = NULL; 

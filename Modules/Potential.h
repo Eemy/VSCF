@@ -14,7 +14,7 @@ class Potential {
     std::vector<std::vector<double>> get1DSlices();
     double integralDriver(int, int, int);
     double integrateTuple(int, bool);
-    double getDipole(int, int);
+    double getDipole(int);
     double integrateSlice(Mode*, int);
     std::vector<std::vector<int>> readPot(std::vector<Mode*>&, bool);
     int nPoints;
