@@ -96,11 +96,12 @@ void EigSolver::diis(std::vector<Mode*> dof) {
   printf("Iteration: %d\n",iter);  
   setMaxElement(E);
 */
-  int index = dof[0]->getNumErrorVecs();
+  for(int a=0 ; a<dof.size() ; a++) {
+  int index = dof[a]->getNumErrorVecs();
   //int index = mode->getNumErrorVecs();
 
   //Extrapolate the Fock out of this thing -Justin
-  if(index>=4) { //why not iter>0?
+  if(index>=2) { //why not iter>0?
     //set up matrix [B11 B12 B13 ... -1.0]
     //              [B21 B22 B23 ... -1.0]
     //              [....................]
@@ -111,14 +112,14 @@ void EigSolver::diis(std::vector<Mode*> dof) {
     for(int i=0 ; i<index+1 ; i++) A[index*(index+1)+i] = -1.0;
     A[index*(index+1)+index] = 0.0;
 
-    for(int a=0 ; a<dof.size() ; a++) {
+    //for(int a=0 ; a<dof.size() ; a++) {
       for(int i=0 ; i<index ; i++) {
         for(int j=0 ; j<index ; j++) {
           A[i*(index+1)+j] += dof[a]->dotErrorVecs(i,j);
 //          A[i*(index+1)+j] += mode->dotErrorVecs(i,j);
         }
       }
-    }
+    //}
     printmat(A,1,index+1,index+1,1.0);
      
     //solve for regression coeff
@@ -130,9 +131,9 @@ void EigSolver::diis(std::vector<Mode*> dof) {
     printmat(B,1,1,index+1,1.0);
 
     //use coefficients for new density matrix
-    for(int a=0 ; a<dof.size() ; a++) {
+    //for(int a=0 ; a<dof.size() ; a++) {
       dof[a]->extrapolateDensity(B);
-    }
+    //}
 
 //    mode->extrapolateDensity(B);
     //for(int i=0 ; i<nBasis*nBasis ; i++) F[i] = 0.0;
@@ -143,5 +144,6 @@ void EigSolver::diis(std::vector<Mode*> dof) {
     //}
     delete[] A;
     delete[] B;
+  }
   }
 }
