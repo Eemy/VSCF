@@ -60,16 +60,23 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
     //printf("Hamiltonian\n"); 
     //printmat(H,nBasis,nBasis,1.0);    
  
-    //Compute Error Vector
+/*    //Compute Error Vector
     if(iter >= 0 && conv == 2)
       mode->saveErrorVec(H,iter);
-
+*/
     double* evals = new double[nBasis];
     diagonalize(H,evals,nBasis); //Hamiltonian becomes eigvec matrix
   
     //Update and Return Requested Information
     double evalNeeded = evals[state];
     mode->updateAllPsi_AllE(H,evals);
+
+    
+    //Compute Error Vector
+//    if(iter >= 0 && conv == 2)
+//      mode->saveErrorVec(H,iter);
+    if(iter >= 0 && conv == 2)
+      mode->saveErrorVec(iter);
 /*
     for(int i=0 ; i<nBasis ; i++) {
       printf("EVALS: %.8f\n",evals[i]*219474.6313708);
@@ -84,14 +91,16 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
 //===============================================================
 //=======================DIIS Shenanigans========================
 void EigSolver::diis(std::vector<Mode*> dof) {
+//void EigSolver::diis(Mode* mode) {
 /*
   printf("Iteration: %d\n",iter);  
   setMaxElement(E);
 */
   int index = dof[0]->getNumErrorVecs();
+  //int index = mode->getNumErrorVecs();
 
   //Extrapolate the Fock out of this thing -Justin
-  if(index>=2) { //why not iter>0?
+  if(index>=4) { //why not iter>0?
     //set up matrix [B11 B12 B13 ... -1.0]
     //              [B21 B22 B23 ... -1.0]
     //              [....................]
@@ -106,6 +115,7 @@ void EigSolver::diis(std::vector<Mode*> dof) {
       for(int i=0 ; i<index ; i++) {
         for(int j=0 ; j<index ; j++) {
           A[i*(index+1)+j] += dof[a]->dotErrorVecs(i,j);
+//          A[i*(index+1)+j] += mode->dotErrorVecs(i,j);
         }
       }
     }
@@ -123,6 +133,8 @@ void EigSolver::diis(std::vector<Mode*> dof) {
     for(int a=0 ; a<dof.size() ; a++) {
       dof[a]->extrapolateDensity(B);
     }
+
+//    mode->extrapolateDensity(B);
     //for(int i=0 ; i<nBasis*nBasis ; i++) F[i] = 0.0;
     //for(int i=0 ; i<index ; i++) {
     //  for(int j=0 ; j<nBasis*nBasis ; j++) {

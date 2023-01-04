@@ -14,6 +14,7 @@ class EigSolver {
     ~EigSolver();
     double solveMode(Mode*, std::vector<double>, int, int);
     void diis(std::vector<Mode*>);
+//    void diis(Mode*);
 };
 
 #endif

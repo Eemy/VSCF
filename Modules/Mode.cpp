@@ -110,58 +110,69 @@ void Mode::updateDensity() {
 
 void Mode::extrapolateDensity(double *coeff) {
   for(int i=0 ; i<nBasis*nBasis ; i++) density[i] = 0.0;
-  for(int i=0 ; i<Dsave.size() ; i++) {
+  for(int i=0 ; i<Esave.size() ; i++) {
     for(int j=0 ; j<nBasis*nBasis ; j++) {
       density[j] += coeff[i]*Dsave[i][j];
     }
   }
 }
 
-void Mode::saveErrorVec(double *F, int iter) {
+void Mode::saveCurrentDensity(int iter) {
+  double *Dcopy = new double[nBasis*nBasis];
+  std::copy(density,density+(nBasis*nBasis),Dcopy);
+
+  if(iter+1 >=diis_subspace) { 
+    delete[] Dsave[(iter+1)%diis_subspace];
+    Dsave[(iter+1)%diis_subspace] = Dcopy;
+  } else {
+    Dsave.push_back(Dcopy);
+  }
+}
+
+//void Mode::saveErrorVec(double *F, int iter) {
+void Mode::saveErrorVec(int iter) {
 /*  //Make copy of current Fock Matrix to save
   double *Fcopy = new double[nBasis*nBasis];
   std::copy(F,F+(nBasis*nBasis),Fcopy);*/
 
-  //Make copy of current density Matrix to save
-  double *Dcopy = new double[nBasis*nBasis];
-  std::copy(density,density+(nBasis*nBasis),Dcopy);
-
   //Compute Error Vector
+/*
   double *fd = new double[nBasis*nBasis];
   double *df = new double[nBasis*nBasis]; 
   double *error = new double[nBasis*nBasis];
   ABmult(fd,F,density,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
   ABmult(df,density,F,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
   for(int i=0 ; i<nBasis*nBasis ; i++) error[i] = fd[i]-df[i]; 
+*/
+  double *error = new double[nBasis*nBasis];
+  for(int i=0 ; i<nBasis*nBasis ; i++) 
+    error[i] = density[i]-Dsave[iter%diis_subspace][i];
 
+  printf("Error Matrix\n");
+  printmat(error,1,nBasis,nBasis,1.0);
+  setMaxElement(error);  
+  if(iter >=diis_subspace) { 
+    delete[] Esave[iter%diis_subspace];
+    Esave[iter%diis_subspace] = error; 
+  } else {
+    Esave.push_back(error);
+  }
 ////debug
   printf("EigVecs\n");
   printmat(waveAll,1,nBasis,nBasis,1.0);
   printf("Density Matrix\n");
   printmat(density,1,nBasis,nBasis,1.0);
-  printf("Fock Matrix\n");
-  printmat(F,1,nBasis,nBasis,1.0);
-  printf("Error Matrix\n");
-  printmat(error,1,nBasis,nBasis,1.0);
+//  printf("Fock Matrix\n");
+//  printmat(F,1,nBasis,nBasis,1.0);
 ////debug
-
   //Save Fock Matrix and Error Matrix
-  if(iter>=diis_subspace) { 
+//  if(iter >=diis_subspace) { 
 //    delete[] Fsave[iter%diis_subspace];
 //    Fsave[iter%diis_subspace] = Fcopy;
-    delete[] Dsave[iter%diis_subspace];
-    delete[] Esave[iter%diis_subspace];
-    Dsave[iter%diis_subspace] = Dcopy;
-    Esave[iter%diis_subspace] = error; 
-  } else {
-    Dsave.push_back(Dcopy);
-    Esave.push_back(error);
-  }
-  
-  setMaxElement(error);  
+//  }
    
-  delete[] fd;
-  delete[] df;
+//  delete[] fd;
+//  delete[] df;
 }
 
 double Mode::dotErrorVecs(int i, int j) {
@@ -175,6 +186,8 @@ double Mode::dotErrorVecs(int i, int j) {
 void Mode::resetSubspace() {
   for(int i=0 ; i<Dsave.size() ; i++) {
     delete[] Dsave[i];
+  }
+  for(int i=0 ; i<Esave.size() ; i++) {
     delete[] Esave[i];
   }
   Dsave.resize(0);

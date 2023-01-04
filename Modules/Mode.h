@@ -36,11 +36,13 @@ class Mode {
     void setKet(int);
     int getBra();
     int getKet();
-    void saveErrorVec(double*,int);
+//    void saveErrorVec(double*,int);
+    void saveErrorVec(int);
     int getNumErrorVecs();
     double dotErrorVecs(int, int);
     void resetSubspace();
     void extrapolateDensity(double *);
+    void saveCurrentDensity(int);
 //    void diis(double*,double*,int);
     double getDIISError();
  private:
