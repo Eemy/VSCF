@@ -97,8 +97,8 @@ int main(int argc, char* argv[]) {
   //Prepare: eigensolver on pure 1D slices for each mode
   for(int i = 0 ; i< nModes ; i++) {
     prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);//-1 prevents DIIS
-    if(conv==2)
-      dof[i]->saveCurrentDensity(-1);
+    //if(conv==2)
+    //  dof[i]->saveCurrentDensity(-1);
   }
   //Compute effective potential integrals
   for(int iter = 0 ; iter< maxIter ; iter++) {
@@ -131,7 +131,7 @@ int main(int argc, char* argv[]) {
     //CALL DIIS: solve for coefficients and obtain extrapolated density matrix
     if(conv==2) {
       solver.diis(dof);
-      for(int i=0 ; i<dof.size() ; i++) dof[i]->saveCurrentDensity(iter);
+      //for(int i=0 ; i<dof.size() ; i++) dof[i]->saveCurrentDensity(iter);
     }
 
     //Check for Convergence
@@ -166,8 +166,8 @@ for(int z = 0 ; z< nModes ; z++) {
     } else {
       prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);
     }
-    if(conv==2)
-      dof[i]->saveCurrentDensity(-1);
+  //  if(conv==2)
+     // dof[i]->saveCurrentDensity(-1);
   }
 
   //Compute effective potential integrals
@@ -204,7 +204,7 @@ for(int z = 0 ; z< nModes ; z++) {
     //CALL DIIS: solve for coefficients and obtain extrapolated density matrix
     if(conv==2) {
       solver.diis(dof);
-      for(int i=0 ; i<dof.size() ; i++) dof[i]->saveCurrentDensity(iter);
+      //for(int i=0 ; i<dof.size() ; i++) dof[i]->saveCurrentDensity(iter);
     }
 
     //Check for Convergence

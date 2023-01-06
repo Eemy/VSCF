@@ -121,33 +121,36 @@ void Mode::saveCurrentDensity(int iter) {
   double *Dcopy = new double[nBasis*nBasis];
   std::copy(density,density+(nBasis*nBasis),Dcopy);
 
-  if(iter+1 >=diis_subspace) { 
-    delete[] Dsave[(iter+1)%diis_subspace];
-    Dsave[(iter+1)%diis_subspace] = Dcopy;
+  int index = iter;
+  //int index = iter+1;
+
+  if(index >=diis_subspace) { 
+    delete[] Dsave[(index)%diis_subspace];
+    Dsave[(index)%diis_subspace] = Dcopy;
   } else {
     Dsave.push_back(Dcopy);
   }
 }
 
-//void Mode::saveErrorVec(double *F, int iter) {
-void Mode::saveErrorVec(int iter) {
+void Mode::saveErrorVec(double *F, int iter) {
+//void Mode::saveErrorVec(int iter) {
 /*  //Make copy of current Fock Matrix to save
   double *Fcopy = new double[nBasis*nBasis];
   std::copy(F,F+(nBasis*nBasis),Fcopy);*/
 
   //Compute Error Vector
-/*
+
   double *fd = new double[nBasis*nBasis];
   double *df = new double[nBasis*nBasis]; 
   double *error = new double[nBasis*nBasis];
   ABmult(fd,F,density,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
   ABmult(df,density,F,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
   for(int i=0 ; i<nBasis*nBasis ; i++) error[i] = fd[i]-df[i]; 
-*/
+/*
   double *error = new double[nBasis*nBasis];
   for(int i=0 ; i<nBasis*nBasis ; i++) 
     error[i] = density[i]-Dsave[iter%diis_subspace][i];
-
+*/
   printf("Error Matrix\n");
   printmat(error,1,nBasis,nBasis,1.0);
   setMaxElement(error);  
@@ -157,6 +160,7 @@ void Mode::saveErrorVec(int iter) {
   } else {
     Esave.push_back(error);
   }
+  saveCurrentDensity(iter);
 ////debug
   printf("EigVecs\n");
   printmat(waveAll,1,nBasis,nBasis,1.0);
@@ -171,8 +175,8 @@ void Mode::saveErrorVec(int iter) {
 //    Fsave[iter%diis_subspace] = Fcopy;
 //  }
    
-//  delete[] fd;
-//  delete[] df;
+  delete[] fd;
+  delete[] df;
 }
 
 double Mode::dotErrorVecs(int i, int j) {
@@ -302,11 +306,35 @@ void Mode::setAnharmonic() {
 //====================FOR EFFECTIVE POTENTIAL======================
 double Mode::getIntegralComponent(int point) {
   double integralComponent = 0.0;
+
+  if(vscfStates) {
+    if(bra > 1 || ket > 1) {
+      printf("Error: No existing VSCF states above 1 quanta of excitation.\n"); 
+      exit(0);
+    }
+    double braIntegral = 0.0;
+    double ketIntegral = 0.0;
+    for(int i=0 ; i<nBasis ; i++) {
+      braIntegral += hermiteEval[i*nPoints+point]*norm[i]*vscfPsi[bra*nBasis+i];
+      ketIntegral += hermiteEval[i*nPoints+point]*norm[i]*vscfPsi[ket*nBasis+i];
+    }
+    return braIntegral*ketIntegral*weights[point];
+  }
+  //Else use modal states
+  double braIntegral = 0.0;
+  double ketIntegral = 0.0;
+  for(int i=0 ; i<nBasis ; i++) {
+    braIntegral += hermiteEval[i*nPoints+point]*norm[i]*waveAll[bra*nBasis+i];
+    ketIntegral += hermiteEval[i*nPoints+point]*norm[i]*waveAll[ket*nBasis+i];
+  }
+  return braIntegral*ketIntegral*weights[point];
+/*
   for(int i=0 ; i<nBasis ; i++) {
     for(int j=0 ; j<nBasis ; j++) {
       integralComponent += density[i*nBasis+j]*hermiteEval[i*nPoints+point]*norm[i]*hermiteEval[j*nPoints+point]*norm[j];
     }
   }
   return integralComponent*weights[point];
+*/
 }
 

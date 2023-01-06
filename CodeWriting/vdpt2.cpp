@@ -151,6 +151,7 @@ int main(int argc, char* argv[]) {
     dof[i]->setHarmonic();
   }
 //===================VMP2 Corrections to GS====================
+
 //====================End VMP2 Corrections=====================
 
 //==================VCIS for all excited states================

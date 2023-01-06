@@ -57,13 +57,13 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
         H[i*nBasis+j] = mode->getOmega()*-0.5*T[i*(nBasis+2)+j]+VMat;
       }
     }
-    //printf("Hamiltonian\n"); 
-    //printmat(H,nBasis,nBasis,1.0);    
+    printf("Fock Matrix\n"); 
+    printmat(H,1,nBasis,nBasis,1.0);    
  
-/*    //Compute Error Vector
+    //Compute Error Vector
     if(iter >= 0 && conv == 2)
       mode->saveErrorVec(H,iter);
-*/
+
     double* evals = new double[nBasis];
     diagonalize(H,evals,nBasis); //Hamiltonian becomes eigvec matrix
   
@@ -72,11 +72,10 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
     mode->updateAllPsi_AllE(H,evals);
 
     
-    //Compute Error Vector
-//    if(iter >= 0 && conv == 2)
-//      mode->saveErrorVec(H,iter);
+/*    //Compute Error Vector
     if(iter >= 0 && conv == 2)
       mode->saveErrorVec(iter);
+*/
 /*
     for(int i=0 ; i<nBasis ; i++) {
       printf("EVALS: %.8f\n",evals[i]*219474.6313708);
