@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
 //===============================Begin VSCF==================================
   //Prepare: eigensolver on pure 1D slices for each mode
   for(int i = 0 ; i< nModes ; i++) {
-    prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);//-1 prevents DIIS
+    prevEnergy += solver.solveMode(dof[i],slices[i],0,-1,0);//-1 prevents DIIS
     //if(conv==2)
     //  dof[i]->saveCurrentDensity(-1);
   }
@@ -118,7 +118,7 @@ int main(int argc, char* argv[]) {
     double energy = 0.0;
     for(int i = 0 ; i< nModes ; i++) {
       printf("Mode %i\n",i);
-      energy += solver.solveMode(dof[i],effV[i],0,iter);//iter instead of -1 allow DIIS to occur
+      energy += solver.solveMode(dof[i],effV[i],0,iter,i);//iter instead of -1 allow DIIS to occur
     } 
 
     //Apply VSCF Energy Correction
@@ -162,9 +162,9 @@ for(int z = 0 ; z< nModes ; z++) {
   dof[z]->setKet(1);
   for(int i = 0 ; i< nModes ; i++) {
     if(i==z) {
-      prevEnergy += solver.solveMode(dof[i],slices[i],1,-1);
+      prevEnergy += solver.solveMode(dof[i],slices[i],1,-1,0);
     } else {
-      prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);
+      prevEnergy += solver.solveMode(dof[i],slices[i],0,-1,0);
     }
   //  if(conv==2)
      // dof[i]->saveCurrentDensity(-1);
@@ -188,9 +188,9 @@ for(int z = 0 ; z< nModes ; z++) {
     double energy = 0.0;
     for(int i = 0 ; i< nModes ; i++) {
       if(i==z) {
-        energy += solver.solveMode(dof[i],effV[i],1,iter);
+        energy += solver.solveMode(dof[i],effV[i],1,iter,i);
       } else {
-        energy += solver.solveMode(dof[i],effV[i],0,iter);
+        energy += solver.solveMode(dof[i],effV[i],0,iter,i);
       }
     }
 
@@ -328,11 +328,14 @@ bool checkConvergence(std::vector<Mode*> dof, double energy, int conv) {
   }
   //DIIS
   if(conv==2) {
+    double max = dof[0]->getDIISError(); //isolate test
+/*
     double max = 0.0;
     for(int i=0 ; i<dof.size() ; i++) {
       if(dof[i]->getDIISError() > max)
         max = dof[i]->getDIISError();
     }
+*/
     printf("ConvCheck: %.12f\n",max);
     printf("Energy: %.12f\n",energy);
     return (max < 1.0e-14);

@@ -196,7 +196,7 @@ int main(int argc, char* argv[]) {
   double* evals = new double[nModes*maxQuanta]; 
   diagonalize(CI,evals,nModes*maxQuanta);
   
-  //Find single excitation energies
+  //Find single excitation energies (note: only works if maxQuanta=1 -> Gerber)
   int counter = 0;
   for(int i=0 ; i<nModes*maxQuanta ; i++) { 
     int maxIndex = 0;
@@ -282,16 +282,18 @@ int main(int argc, char* argv[]) {
 
   for(int i=0 ; i<nModes ; i++) {
     int blockSize = singles.size()/nModes;
-    for(int j=0 ; j<nModes ; j++) {
-      for(int k=0 ; k<blockSize ; k++) {
-        mp2Corr[i] += CI[i*nModes+j]*singles[j*blockSize+k];
+    for(int j=0 ; j<blockSize ; j++) {
+      double temp = 0.0;
+      for(int k=0 ; k<nModes ; k++) {
+        temp += CI[i*nModes+k]*singles[k*blockSize+j];
       }
+      mp2Corr[i] += temp*temp;
     }
     for(int j=0 ; j<integrals.size() ; j++) {
       blockSize = integrals[j].size()/nModes;
-      for(int k=0 ; k<nModes ; k++) {
-        for(int l=0 ; l<blockSize ; l++) {
-          mp2Corr[i] += CI[i*nModes+k]*integrals[j][k*blockSize+l];
+      for(int k=0 ; k<blockSize ; k++) {
+        for(int l=0 ; l<nModes ; l++) {
+          mp2Corr[i] += CI[i*nModes+l]*integrals[j][l*blockSize+k];
         }
       }
     } 
@@ -313,25 +315,6 @@ int main(int argc, char* argv[]) {
     }
   } 
 */
-  printf("Singles\n");
-  double *singlesVector = &singles[0];
-  printmat(singlesVector,nModes,nModes,numStates,1.0);
-  double *singlesDenomVec = &singlesDenom[0];
-  printmat(singlesDenomVec,nModes,nModes,numStates,1.0);
-
-  printf("Doubles\n");
-  double *doublesVector = &integrals[0][0];
-  int nPairs = nModes*(nModes-1)/2;
-  printmat(doublesVector,nModes,nPairs,numStates*numStates,1.0);
-  double *doublesDenomVec = &denominators[0][0];
-  printmat(doublesDenomVec,nModes,nPairs,numStates*numStates,1.0);
-
-  printf("Triples\n");
-  double *triplesVector = &integrals[0][1];
-  int nTriples = nModes*(nModes-1)*(nModes-2)/6;
-  printmat(triplesVector,nModes,nTriples,numStates*numStates*numStates,1.0);
-  double *triplesDenomVec = &denominators[0][1];
-  printmat(triplesDenomVec,nModes,nTriples,numStates*numStates*numStates,1.0);
 //===================End VMP2 Corrections======================
 
   //Print out all the transition frequencies
@@ -372,9 +355,9 @@ void fillCorrectionMatrices(Potential *pot, int minState, int maxState, std::vec
           integrals[excitationLevel-2][index] += pot->integrateTuple(tupleIndex, false);
           if(denominators[excitationLevel-2][index] == 0) { 
             std::vector<int> indices(&diffCopy[1],&(*diffCopy.end()));
-            double denominator = excitedEnergies[diffCopy[0]]-excitedEnergies[0];
+            double denominator = excitedEnergies[diffCopy[0]+1]-excitedEnergies[0]; //En
             for(int a=0 ; a<indices.size() ; a++)
-              denominator -= dof[indices[a]]->getEModal()-dof[indices[a]]->getEModal(0); 
+              denominator -= dof[indices[a]]->getEModal()-dof[indices[a]]->getEModal(0); //Em 
             denominators[excitationLevel-2][index] = denominator; 
           }
         }

@@ -45,7 +45,8 @@ void EigSolver::buildTmat() {
 }
 
 //===============================================================
-double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int iter) {
+//double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int iter) {
+double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int iter, int modeIndex) {
     double* H = new double[nBasis*nBasis];
     for(int i=0 ; i<nBasis ; i++) {
       for(int j=0 ; j<nBasis ; j++) {
@@ -61,7 +62,7 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
     printmat(H,1,nBasis,nBasis,1.0);    
  
     //Compute Error Vector
-    if(iter >= 0 && conv == 2)
+    if(iter >= 0 && conv == 2) 
       mode->saveErrorVec(H,iter);
 
     double* evals = new double[nBasis];
@@ -69,7 +70,8 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
   
     //Update and Return Requested Information
     double evalNeeded = evals[state];
-    mode->updateAllPsi_AllE(H,evals);
+    if(modeIndex == 0) //isolate test
+      mode->updateAllPsi_AllE(H,evals);
 
     
 /*    //Compute Error Vector
@@ -82,9 +84,11 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
     }
 */
     //printf("EigVal:\n%.8f\n",evalNeeded*219474.6313708);
-
-//    delete[] H;
-//    delete[] evals;
+    
+    if(modeIndex != 0) { //isolate test
+      delete[] H; //isolate test
+      delete[] evals; //isolate test
+    }
     return evalNeeded;
 }
 //===============================================================
@@ -96,11 +100,12 @@ void EigSolver::diis(std::vector<Mode*> dof) {
   setMaxElement(E);
 */
   for(int a=0 ; a<dof.size() ; a++) {
+  if(a==0) { //isolate test
   int index = dof[a]->getNumErrorVecs();
   //int index = mode->getNumErrorVecs();
 
   //Extrapolate the Fock out of this thing -Justin
-  if(index>=2) { //why not iter>0?
+  if(index>=3) { //why not iter>0?
     //set up matrix [B11 B12 B13 ... -1.0]
     //              [B21 B22 B23 ... -1.0]
     //              [....................]
@@ -144,5 +149,6 @@ void EigSolver::diis(std::vector<Mode*> dof) {
     delete[] A;
     delete[] B;
   }
+  }//isolate test
   }
 }
