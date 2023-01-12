@@ -45,8 +45,7 @@ void EigSolver::buildTmat() {
 }
 
 //===============================================================
-//double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int iter) {
-double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int iter, int modeIndex) {
+double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int iter) {
     double* H = new double[nBasis*nBasis];
     for(int i=0 ; i<nBasis ; i++) {
       for(int j=0 ; j<nBasis ; j++) {
@@ -58,8 +57,8 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
         H[i*nBasis+j] = mode->getOmega()*-0.5*T[i*(nBasis+2)+j]+VMat;
       }
     }
-    printf("Fock Matrix\n"); 
-    printmat(H,1,nBasis,nBasis,1.0);    
+//    printf("Fock Matrix\n"); 
+//    printmat(H,1,nBasis,nBasis,1.0);    
  
     //Compute Error Vector
     if(iter >= 0 && conv == 2) 
@@ -70,8 +69,7 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
   
     //Update and Return Requested Information
     double evalNeeded = evals[state];
-    if(modeIndex == 0) //isolate test
-      mode->updateAllPsi_AllE(H,evals);
+    mode->updateAllPsi_AllE(H,evals);
 
     
 /*    //Compute Error Vector
@@ -85,10 +83,8 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
 */
     //printf("EigVal:\n%.8f\n",evalNeeded*219474.6313708);
     
-    if(modeIndex != 0) { //isolate test
-      delete[] H; //isolate test
-      delete[] evals; //isolate test
-    }
+    //delete[] H; 
+    //delete[] evals; 
     return evalNeeded;
 }
 //===============================================================
@@ -100,7 +96,6 @@ void EigSolver::diis(std::vector<Mode*> dof) {
   setMaxElement(E);
 */
   for(int a=0 ; a<dof.size() ; a++) {
-  if(a==0) { //isolate test
   int index = dof[a]->getNumErrorVecs();
   //int index = mode->getNumErrorVecs();
 
@@ -149,6 +144,5 @@ void EigSolver::diis(std::vector<Mode*> dof) {
     delete[] A;
     delete[] B;
   }
-  }//isolate test
   }
 }

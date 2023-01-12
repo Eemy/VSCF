@@ -148,7 +148,7 @@ int main(int argc, char* argv[]) {
 //====================End Ground-State VSCF====================
   for(int i = 0 ; i< nModes ; i++) {
     dof[i]->setGroundState();
-    dof[i]->setHarmonic();
+//    dof[i]->setHarmonic();
   }
 //===================VMP2 Corrections to GS====================
 
@@ -214,7 +214,17 @@ int main(int argc, char* argv[]) {
   }
 //need to save where the corresponding eigvec coefficients are for CI coeff and mp2 correction summing
 //=========================End VCIS============================
-
+/*  //read rmass for tests
+  std::ifstream in("rmass.dat",std::ios::in);
+  std::vector<double> mass; 
+ if(!in) {
+    printf("Error: rmass.dat could not be opened\n");
+    exit(0);
+  }
+  double val = 0.0;
+  while(in >> val) {
+    mass.push_back(val*1822.8884848961380701);
+  }*/
 //======================VMP2 Corrections=======================
   std::vector<double> mp2Corr(nModes);
 
@@ -287,33 +297,26 @@ int main(int argc, char* argv[]) {
       for(int k=0 ; k<nModes ; k++) {
         temp += CI[i*nModes+k]*singles[k*blockSize+j];
       }
-      mp2Corr[i] += temp*temp;
+      if(temp != 0.0 && singlesDenom[i*blockSize+j] != 0.0)
+        mp2Corr[i] += temp*temp/singlesDenom[i*blockSize+j];
     }
     for(int j=0 ; j<integrals.size() ; j++) {
       blockSize = integrals[j].size()/nModes;
       for(int k=0 ; k<blockSize ; k++) {
+        double temp = 0.0;
         for(int l=0 ; l<nModes ; l++) {
-          mp2Corr[i] += CI[i*nModes+l]*integrals[j][l*blockSize+k];
+          temp += CI[i*nModes+l]*integrals[j][l*blockSize+k];
         }
+        if(temp != 0.0 && denominators[j][i*blockSize+k] != 0.0)
+          mp2Corr[i] += temp*temp/denominators[j][i*blockSize+k];
       }
     } 
   }
-
 /*
-  for(int i=0 ; i<nModes ; i++) {
-    int blockSize = singles.size()/nModes; 
-    for(int j=0 ; j<blockSize ; j++) {
-      if(singles[i*blockSize+j] != 0.0) 
-        mp2Corr[i] += singles[i*blockSize+j]*singles[i*blockSize+j]/singlesDenom[i*blockSize+j];
-    }
-    for(int j=0 ; j<integrals.size() ; j++) {
-      blockSize = integrals[j].size()/nModes;
-      for(int k=0 ; k<blockSize ; k++) {
-        if(integrals[j][i*blockSize+k] != 0.0) 
-          mp2Corr[i] += integrals[j][i*blockSize+k]*integrals[j][i*blockSize+k]/denominators[j][i*blockSize+k]; 
-      }
-    }
-  } 
+  double mode1 = 1/sqrt(2*mass[0]*dof[0]->getOmega());
+  double mode2 = 1/sqrt(2*mass[1]*dof[1]->getOmega());
+  printf("<10|21>: %.12f\n",mode1*mode2*sqrt(2));
+  printf("<01|12>: %.12f\n",mode1*mode2*sqrt(2));
 */
 //===================End VMP2 Corrections======================
 
