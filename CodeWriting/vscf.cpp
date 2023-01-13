@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
   int maxIter = 500;
 
   if(argc < defaultLength) { 
-    printf("Error: <Nmodes> <Nquad> <1-Roothaan 2-Diis> <EnergyFile> <DipoleXFile> <DipoleYFile> <DipoleZFile> <CouplingDegree> [<EnergyFile> <Dx> <Dy> <Dz> <dim> ...]\n");
+    printf("Error: <Nmodes> <Nquad> <1-Roothaan 2-Diis 3-GradDescent> <EnergyFile> <DipoleXFile> <DipoleYFile> <DipoleZFile> <CouplingDegree> [<EnergyFile> <Dx> <Dy> <Dz> <dim> ...]\n");
     exit(0);
   }
   if((argc-defaultLength)%5 != 0) {
@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
   int nModes = atoi(argv[1]); //arg1
   int nPoints = atoi(argv[2]); //arg2
   int conv = atoi(argv[3]);
-  if(conv != 1 && conv != 2) //default is roothaan for bad input
+  if(conv != 1 && conv != 2 && conv != 3) //default is roothaan for bad input
     conv = 1;
   std::vector<std::string> potFileNames;
   potFileNames.push_back(argv[4]); //arg4
@@ -95,8 +95,10 @@ int main(int argc, char* argv[]) {
   std::string fileName = "";
   if(conv==1)
      fileName = "eemVSCF_roothaan.dat";
-  else
+  else if(conv==2)
      fileName = "eemVSCF_diis.dat";
+  else
+    fileName = "eemVSCF_gradDescent.dat";
   FILE *results = fopen(fileName.c_str(),"w");
 //===============================Begin VSCF==================================
   //Prepare: eigensolver on pure 1D slices for each mode
