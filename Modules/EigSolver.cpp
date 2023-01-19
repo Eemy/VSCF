@@ -60,22 +60,27 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
 //    printf("Fock Matrix\n"); 
 //    printmat(H,1,nBasis,nBasis,1.0);    
  
-    //Compute Error Vector
+/*    //Compute Error Vector
     if(iter >= 0 && conv == 2) 
       mode->saveErrorVec(H,iter);
-
+   
+    //Update density by gradient 
+    if(iter >= 0 && conv == 3)
+      mode->extrapolateDensity(H);
+*/
     double* evals = new double[nBasis];
     diagonalize(H,evals,nBasis); //Hamiltonian becomes eigvec matrix
   
     //Update and Return Requested Information
     double evalNeeded = evals[state];
     mode->updateAllPsi_AllE(H,evals);
+    if(!(conv==3 && iter>=0)) 
+      mode->updateDensity();
 
-    
-/*    //Compute Error Vector
+    //Compute Error Vector
     if(iter >= 0 && conv == 2)
       mode->saveErrorVec(iter);
-*/
+
 /*
     for(int i=0 ; i<nBasis ; i++) {
       printf("EVALS: %.8f\n",evals[i]*219474.6313708);
@@ -89,7 +94,8 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
 }
 //===============================================================
 //=======================DIIS Shenanigans========================
-void EigSolver::diis(std::vector<Mode*> dof) {
+//void EigSolver::diis(std::vector<Mode*> dof) {
+void EigSolver::diis(std::vector<Mode*> dof, int iter) {
 //void EigSolver::diis(Mode* mode) {
 /*
   printf("Iteration: %d\n",iter);  
@@ -100,7 +106,7 @@ void EigSolver::diis(std::vector<Mode*> dof) {
   //int index = mode->getNumErrorVecs();
 
   //Extrapolate the Fock out of this thing -Justin
-  if(index>=3) { //why not iter>0?
+  if(index>=4) { //why not iter>0?
     //set up matrix [B11 B12 B13 ... -1.0]
     //              [B21 B22 B23 ... -1.0]
     //              [....................]
@@ -131,7 +137,7 @@ void EigSolver::diis(std::vector<Mode*> dof) {
 
     //use coefficients for new density matrix
     //for(int a=0 ; a<dof.size() ; a++) {
-      dof[a]->extrapolateDensity(B);
+      dof[a]->extrapolateDensity(B,iter);
     //}
 
 //    mode->extrapolateDensity(B);

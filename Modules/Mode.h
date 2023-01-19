@@ -36,18 +36,19 @@ class Mode {
     void setKet(int);
     int getBra();
     int getKet();
-    void saveErrorVec(double*,int);
-//    void saveErrorVec(int);
+//    void saveErrorVec(double*,int);
+    void saveErrorVec(int);
     int getNumErrorVecs();
     double dotErrorVecs(int, int);
     void resetSubspace();
-    void extrapolateDensity(double *);
+//    void extrapolateDensity(double *);
+    void extrapolateDensity(double *,int);
     void saveCurrentDensity(int);
 //    void diis(double*,double*,int);
     double getDIISError();
+    void updateDensity();
  private:
     void setMaxElement(double*);
-    void updateDensity();
 
     double omega;
     int nPoints;
@@ -76,6 +77,7 @@ class Mode {
     std::vector<double*> Dsave;
     std::vector<double*> Esave; 
     double* density;
+    double* firstDensity;
     int diis_subspace;
 };
 
