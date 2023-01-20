@@ -117,11 +117,11 @@ void Mode::extrapolateDensity(double *coeff,int iter) {
         density[j] += coeff[i]*Dsave[i][j];
       }
     }
-    //Replace saved density
+    /*//Replace saved density
     double *Dcopy = new double[nBasis*nBasis];
     std::copy(density,density+(nBasis*nBasis),Dcopy);
     delete [] Dsave[iter%diis_subspace];
-    Dsave[iter%diis_subspace] = Dcopy;
+    Dsave[iter%diis_subspace] = Dcopy;*/
   } else if(conv ==3) { //coeff is the Fock Matrix
     double learningFactor = 0.1;
     for(int i=0 ; i<nBasis*nBasis ; i++) {
@@ -131,14 +131,16 @@ void Mode::extrapolateDensity(double *coeff,int iter) {
 }
 
 void Mode::saveCurrentDensity(int iter) {
+/*
   double *Dcopy = new double[nBasis*nBasis];
   std::copy(density,density+(nBasis*nBasis),Dcopy);
 
   if(iter==-1) {
     firstDensity = Dcopy; 
   } else {
-    //double *Dcopy = new double[nBasis*nBasis];
-    //std::copy(density,density+(nBasis*nBasis),Dcopy);
+*/
+    double *Dcopy = new double[nBasis*nBasis];
+    std::copy(density,density+(nBasis*nBasis),Dcopy);
 
     int index = iter;
     //int index = iter+1;
@@ -149,33 +151,36 @@ void Mode::saveCurrentDensity(int iter) {
     } else {
       Dsave.push_back(Dcopy);
     }
-  }
+//  }
 }
 
-//void Mode::saveErrorVec(double *F, int iter) {
-void Mode::saveErrorVec(int iter) {
+void Mode::saveErrorVec(double *F, int iter) {
+//void Mode::saveErrorVec(int iter) {
 /*  //Make copy of current Fock Matrix to save
   double *Fcopy = new double[nBasis*nBasis];
   std::copy(F,F+(nBasis*nBasis),Fcopy);*/
 
   //Compute Error Vector
-/*
   double *fd = new double[nBasis*nBasis];
   double *df = new double[nBasis*nBasis]; 
   double *error = new double[nBasis*nBasis];
   ABmult(fd,F,density,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
   ABmult(df,density,F,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
   for(int i=0 ; i<nBasis*nBasis ; i++) error[i] = fd[i]-df[i]; 
-*/
-
+/*
   double *error = new double[nBasis*nBasis];
+*/
+/*
   if(iter==0) {
     for(int i=0 ; i<nBasis*nBasis ; i++) 
       error[i] = density[i]-firstDensity[i];
   } else {
-    for(int i=0 ; i<nBasis*nBasis ; i++) 
-      error[i] = density[i]-Dsave[(iter-1)%diis_subspace][i];
-  }
+*/
+/*    for(int i=0 ; i<nBasis*nBasis ; i++) 
+      error[i] = density[i]-Dsave[iter%diis_subspace][i];
+*/
+//      error[i] = density[i]-Dsave[(iter-1)%diis_subspace][i];
+//  }
 
   printf("Error Matrix\n");
   printmat(error,1,nBasis,nBasis,1.0);

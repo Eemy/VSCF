@@ -60,10 +60,10 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
 //    printf("Fock Matrix\n"); 
 //    printmat(H,1,nBasis,nBasis,1.0);    
  
-/*    //Compute Error Vector
+    //Compute Error Vector
     if(iter >= 0 && conv == 2) 
       mode->saveErrorVec(H,iter);
-   
+/*   
     //Update density by gradient 
     if(iter >= 0 && conv == 3)
       mode->extrapolateDensity(H);
@@ -76,11 +76,12 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
     mode->updateAllPsi_AllE(H,evals);
     if(!(conv==3 && iter>=0)) 
       mode->updateDensity();
-
+    
+/*
     //Compute Error Vector
     if(iter >= 0 && conv == 2)
       mode->saveErrorVec(iter);
-
+*/
 /*
     for(int i=0 ; i<nBasis ; i++) {
       printf("EVALS: %.8f\n",evals[i]*219474.6313708);
@@ -102,7 +103,7 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
   setMaxElement(E);
 */
   for(int a=0 ; a<dof.size() ; a++) {
-  int index = dof[a]->getNumErrorVecs();
+  int index = dof[0]->getNumErrorVecs();
   //int index = mode->getNumErrorVecs();
 
   //Extrapolate the Fock out of this thing -Justin
@@ -117,7 +118,7 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
     for(int i=0 ; i<index+1 ; i++) A[index*(index+1)+i] = -1.0;
     A[index*(index+1)+index] = 0.0;
 
-    //for(int a=0 ; a<dof.size() ; a++) {
+  //  for(int a=0 ; a<dof.size() ; a++) {
       for(int i=0 ; i<index ; i++) {
         for(int j=0 ; j<index ; j++) {
           A[i*(index+1)+j] += dof[a]->dotErrorVecs(i,j);
