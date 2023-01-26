@@ -59,10 +59,11 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
     }
 //    printf("Fock Matrix\n"); 
 //    printmat(H,1,nBasis,nBasis,1.0);    
- 
+/* 
     //Compute Error Vector
     if(iter >= 0 && conv == 2) 
       mode->saveErrorVec(H,iter);
+*/
 /*   
     //Update density by gradient 
     if(iter >= 0 && conv == 3)
@@ -77,11 +78,10 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
     if(!(conv==3 && iter>=0)) 
       mode->updateDensity();
     
-/*
     //Compute Error Vector
     if(iter >= 0 && conv == 2)
       mode->saveErrorVec(iter);
-*/
+
 /*
     for(int i=0 ; i<nBasis ; i++) {
       printf("EVALS: %.8f\n",evals[i]*219474.6313708);
@@ -102,7 +102,7 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
   printf("Iteration: %d\n",iter);  
   setMaxElement(E);
 */
-  for(int a=0 ; a<dof.size() ; a++) {
+  //for(int a=0 ; a<dof.size() ; a++) {
   int index = dof[0]->getNumErrorVecs();
   //int index = mode->getNumErrorVecs();
 
@@ -118,14 +118,14 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
     for(int i=0 ; i<index+1 ; i++) A[index*(index+1)+i] = -1.0;
     A[index*(index+1)+index] = 0.0;
 
-  //  for(int a=0 ; a<dof.size() ; a++) {
+    for(int a=0 ; a<dof.size() ; a++) {
       for(int i=0 ; i<index ; i++) {
         for(int j=0 ; j<index ; j++) {
           A[i*(index+1)+j] += dof[a]->dotErrorVecs(i,j);
 //          A[i*(index+1)+j] += mode->dotErrorVecs(i,j);
         }
       }
-    //}
+    }
     printmat(A,1,index+1,index+1,1.0);
      
     //solve for regression coeff
@@ -137,9 +137,9 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
     printmat(B,1,1,index+1,1.0);
 
     //use coefficients for new density matrix
-    //for(int a=0 ; a<dof.size() ; a++) {
+    for(int a=0 ; a<dof.size() ; a++) {
       dof[a]->extrapolateDensity(B,iter);
-    //}
+    }
 
 //    mode->extrapolateDensity(B);
     //for(int i=0 ; i<nBasis*nBasis ; i++) F[i] = 0.0;
@@ -151,5 +151,5 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
     delete[] A;
     delete[] B;
   }
-  }
+  //}
 }

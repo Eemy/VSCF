@@ -142,8 +142,8 @@ void Mode::saveCurrentDensity(int iter) {
     double *Dcopy = new double[nBasis*nBasis];
     std::copy(density,density+(nBasis*nBasis),Dcopy);
 
-    int index = iter;
-    //int index = iter+1;
+    //int index = iter;
+    int index = iter+1;
 
     if(index >=diis_subspace) { 
       delete[] Dsave[(index)%diis_subspace];
@@ -154,12 +154,12 @@ void Mode::saveCurrentDensity(int iter) {
 //  }
 }
 
-void Mode::saveErrorVec(double *F, int iter) {
-//void Mode::saveErrorVec(int iter) {
+//void Mode::saveErrorVec(double *F, int iter) {
+void Mode::saveErrorVec(int iter) {
 /*  //Make copy of current Fock Matrix to save
   double *Fcopy = new double[nBasis*nBasis];
   std::copy(F,F+(nBasis*nBasis),Fcopy);*/
-
+/*
   //Compute Error Vector
   double *fd = new double[nBasis*nBasis];
   double *df = new double[nBasis*nBasis]; 
@@ -167,18 +167,19 @@ void Mode::saveErrorVec(double *F, int iter) {
   ABmult(fd,F,density,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
   ABmult(df,density,F,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
   for(int i=0 ; i<nBasis*nBasis ; i++) error[i] = fd[i]-df[i]; 
-/*
-  double *error = new double[nBasis*nBasis];
 */
+
+  double *error = new double[nBasis*nBasis];
+
 /*
   if(iter==0) {
     for(int i=0 ; i<nBasis*nBasis ; i++) 
       error[i] = density[i]-firstDensity[i];
   } else {
 */
-/*    for(int i=0 ; i<nBasis*nBasis ; i++) 
+    for(int i=0 ; i<nBasis*nBasis ; i++) 
       error[i] = density[i]-Dsave[iter%diis_subspace][i];
-*/
+
 //      error[i] = density[i]-Dsave[(iter-1)%diis_subspace][i];
 //  }
 
@@ -191,7 +192,7 @@ void Mode::saveErrorVec(double *F, int iter) {
   } else {
     Esave.push_back(error);
   }
-  saveCurrentDensity(iter);
+//  saveCurrentDensity(iter);
 ////debug
   printf("EigVecs\n");
   printmat(waveAll,1,nBasis,nBasis,1.0);

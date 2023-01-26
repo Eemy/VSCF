@@ -1,7 +1,12 @@
+#include "Mp2Corr.h"
 #include "Mode.h"
 #include "Potential.h"
+#include "../UtilityFunc/aux.h"
 #include <vector>
-#include <pair>
+#include <utility>
+#include <iostream>
+#include <cmath>
+#include <stdbool.h>
 using std::vector;
 using std::pair;
 
@@ -14,18 +19,25 @@ Mp2Corr::Mp2Corr(vector<Mode*>& _dof, vector<Potential*>& _pot, vector<vector<ve
   minState = 1;
   numStates = maxState-minState+1;
   nModes = dof.size();
-  //maxDim;
+  numPsi = 0;
+
+  maxDim = 0;
+  for(int i=0 ; i<pot.size() ; i++) {
+    if(pot[i]->dim > maxDim)
+      maxDim = pot[i]->dim;
+  }
 }
 
 Mp2Corr::~Mp2Corr() {
+
 }
 
-Mp2Corr::calculateIntegrals(vector<pair<vector<int>,vector<int>>>psi_m, vector<double> excitedEnergies) {
-  int numPsi = psi_m.size();  
+void Mp2Corr::calculateIntegrals(vector<pair<vector<int>,vector<int>>>psi_m, vector<double> excitedEnergies) {
+  //Set up
+  numPsi = psi_m.size(); //size of degenerate subspace 
 
   singles.resize(numPsi*nModes*numStates);
   singlesDenom.resize(numPsi*nModes*numStates);
-
   for(int i=0 ; i<maxDim ; i++) {
     int excitationLevel = i+2;
     int size = numPsi;
@@ -40,23 +52,27 @@ Mp2Corr::calculateIntegrals(vector<pair<vector<int>,vector<int>>>psi_m, vector<d
     denominators.push_back(denominator);
   } 
   
+  //Start calculation
   for(int i=0 ; i<numPsi ; i++) {
-    for(int i2=0 ; i2<psi_m[i].first.size() ; i2++) 
-      dof[psi_m[i].first[i2]]->setBra(psi_m[i].second[i2]);
+    for(int i2=0 ; i2<psi_m[i].first.size() ; i2++) { 
+      int mode = psi_m[i].first[i2];
+      int state = psi_m[i].second[i2]; 
+      dof[mode]->setBra(state);
+    }
     
     for(int j=0 ; j<tuples.size() ; j++) {
     for(int j2=0 ; j2<tuples[j].size() ; j2++) {
 
       //Single Excitations 
       for(int k=0 ; k<nModes ; k++) {
-        std::vector<int> diff1;
-        diff1.push_back(i); //change for psi_m
+        vector<int> diff1 = psi_m[i].first;
+        //diff1.push_back(i); //change for psi_m
         diff1.push_back(k);
         for(int l=minState ; l<=maxState ; l++) {
           dof[k]->setKet(l);
-          if(l>1 && integralIsNonZero(diff1,tuples[j][j2],dof)) { 
+          if(l>1 && integralIsNonZero(diff1,tuples[j][j2])) { 
             double integralVal = pot[j]->integrateTuple(j2,false);
-            int index = i*nModes*numStates+k*numStates+(l-minState);//change for psi_m
+            int index = i*numPsi*numStates+k*numStates+(l-minState);//change for psi_m
             //printf("Integral: %i %i State: %i, Tuple Num: %i Val: %.12f\n",i,k,l,j2,integralVal);   
             singles[index] += integralVal;
             if(singlesDenom[index] == 0.0)
@@ -64,57 +80,112 @@ Mp2Corr::calculateIntegrals(vector<pair<vector<int>,vector<int>>>psi_m, vector<d
           }
 
           //Double+ Excitations
-          fillCorrectionMatrices(2, j, j2, k+1, diff1, excitedEnergies);
+          fillCorrectionMatrices(2, i, j, j2, k+1, diff1, excitedEnergies);
           dof[k]->setKet(0);
         }//l
       }//k
     }//j2
     }//j
-    dof[i]->setBra(0); //change for psi_m
+    
+    for(int i2=0 ; i2<psi_m[i].first.size() ; i2++) { 
+      int mode = psi_m[i].first[i2];
+      dof[mode]->setBra(0);
+    }
   }//i
 
-  }    
 }
 
-Mp2Corr::clear() {
-  singles.clear();
-  singlesDenom.clear();
-  integrals.clear();
-  denominators.clear();
-}
-
-void Mp2Corr::fillCorrectionMatrices(int excitationLevel, int potIndex, int tupleIndex, int startIndex, std::vector<int> diff, std::vector<double>& excitedEnergies) {
-  if(pot->dim+1 >= excitationLevel) {
-    for(int i=startIndex ; i<dof.size() ; i++) {
-      std::vector<int> diffCopy = diff; //copy diff
+void Mp2Corr::fillCorrectionMatrices(int excitationLevel, int psiIndex, int potIndex, int tupleIndex, int startIndex, vector<int> diff, vector<double>& excitedEnergies) {
+  if(pot[potIndex]->dim+1 >= excitationLevel) { //Note: this condition needs to change if we are using different degenerate subspaces from Gerber
+    for(int i=startIndex ; i<nModes ; i++) {
+      vector<int> diffCopy = diff; //copy diff
       diffCopy.push_back(i);
+
       for(int j=minState ; j<=maxState ; j++) { 
         dof[i]->setKet(j); 
-        if(integralIsNonZero(diffCopy,tuple,dof)) {
-          int index = getIndex(diffCopy,minState,maxState,excitationLevel,dof);
-          integrals[excitationLevel-2][index] += pot->integrateTuple(tupleIndex, false);
+        if(integralIsNonZero(diffCopy,tuples[potIndex][tupleIndex])) {
+          int tupleStart = diffCopy.size()-excitationLevel;
+          vector<int> indices(&diffCopy[tupleStart],&(*diffCopy.end())); 
+
+          int index = getIndex(indices,psiIndex,excitationLevel);
+          integrals[excitationLevel-2][index] += pot[potIndex]->integrateTuple(tupleIndex, false);
+
+          //calculate denominator
           if(denominators[excitationLevel-2][index] == 0) { 
-            std::vector<int> indices(&diffCopy[1],&(*diffCopy.end()));
-            double denominator = excitedEnergies[diffCopy[0]+1]-excitedEnergies[0]; //En
+            double denominator = excitedEnergies[psiIndex+1]-excitedEnergies[0]; //En
             for(int a=0 ; a<indices.size() ; a++)
               denominator -= dof[indices[a]]->getEModal()-dof[indices[a]]->getEModal(0); //Em 
             denominators[excitationLevel-2][index] = denominator; 
           }
         }
-        fillCorrectionMatrices(excitationLevel+1, potIndex, tupleIndex, i+1, diffCopy, excitedEnergies);
+        fillCorrectionMatrices(excitationLevel+1, psiIndex, potIndex, tupleIndex, i+1, diffCopy, excitedEnergies);
         dof[i]->setKet(0);
       }//state
     }//mode
 
-  } 
+  }//if 
 }
 
-int Mp2Corr::getIndex(std::vector<int> diff, int minState, int maxState, int excitationLevel, std::vector<Mode*> dof) {
-  int numStates = maxState-minState+1;
-  int nModes = dof.size();
+void Mp2Corr::getSecondOrderCorr(vector<double>& corrections) {
+  if(numPsi == 0) {
+    std::cout << "No calculations have been done since the last clear.\n";
+    return;
+  } 
+  double* coeff = new double[numPsi*numPsi];
+  for(int i=0 ; i<numPsi ; i++) 
+    for(int j=0 ; j<numPsi ; j++) 
+      if(i==j)
+        coeff[i*numPsi+j] = 1.0;
+      else
+        coeff[i*numPsi+j] = 0.0;
+  getSecondOrderCorr(corrections,coeff); 
+  delete[] coeff;
+}
 
+void Mp2Corr::getSecondOrderCorr(vector<double>& corrections, double* coeff) {
+  //Check that calculateIntegrals was called before this and no clear
+  if(numPsi == 0) {
+    std::cout << "No calculations have been done since the last clear.\n";
+    return;
+  } 
+
+  //VMP2 Corrections square the integrals and include denominator
+  for(int i=0 ; i<numPsi ; i++) {
+    int blockSize = singles.size()/numPsi;
+    for(int j=0 ; j<blockSize ; j++) {
+      double temp = 0.0;
+      for(int k=0 ; k<numPsi ; k++) {
+        temp += coeff[i*numPsi+k]*singles[k*blockSize+j];
+      }
+      if(temp != 0.0 && singlesDenom[i*blockSize+j] != 0.0)
+        corrections[i] += temp*temp/singlesDenom[i*blockSize+j];
+    }
+    for(int j=0 ; j<integrals.size() ; j++) {
+      blockSize = integrals[j].size()/numPsi;
+      for(int k=0 ; k<blockSize ; k++) {
+        double temp = 0.0;
+        for(int l=0 ; l<numPsi ; l++) {
+          temp += coeff[i*numPsi+l]*integrals[j][l*blockSize+k];
+        }
+        if(temp != 0.0 && denominators[j][i*blockSize+k] != 0.0)
+          corrections[i] += temp*temp/denominators[j][i*blockSize+k];
+      }
+    } 
+  }
+}
+
+void Mp2Corr::clear() {
+  singles.clear();
+  singlesDenom.clear();
+  integrals.clear();
+  denominators.clear();
+  numPsi = 0;
+}
+
+//============Helper Methods==========
+int Mp2Corr::getIndex(vector<int> indices, int psiIndex, int excitationLevel) {
   //excited bra block
-  int index = diff[0]; //first element is the excited mode 
+  int index = psiIndex; 
   for(int i=0 ; i<excitationLevel ; i++) { 
     index *= nModes-i; 
     index /= i+1;
@@ -122,7 +193,6 @@ int Mp2Corr::getIndex(std::vector<int> diff, int minState, int maxState, int exc
   index *= pow(numStates,excitationLevel);
 
   //excited ket tuple
-  std::vector<int> indices(&diff[1],&(*diff.end()));
   index += tupleIndexDriver(indices,nModes)*pow(numStates,excitationLevel);
 
   //state combinations in tuple
@@ -133,7 +203,7 @@ int Mp2Corr::getIndex(std::vector<int> diff, int minState, int maxState, int exc
   return index;
 }
 
-bool Mp2Corr::integralIsNonZero(std::vector<int> diff, std::vector<int> tuple, std::vector<Mode*>& dof) {
+bool Mp2Corr::integralIsNonZero(vector<int> diff, vector<int> tuple) {
   for(int n=0 ; n<diff.size() ; n++) {
     if(dof[diff[n]]->getBra() != dof[diff[n]]->getKet()) {
       bool found = false;

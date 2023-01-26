@@ -4,9 +4,11 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <utility>
 #include <stdbool.h>
 #include "../UtilityFunc/aux.h"
 #include "../Modules/Mode.h"
+#include "../Modules/Mp2Corr.h"
 #include "../Modules/Potential.h"
 #include "../Modules/EigSolver.h"
 ///////////////////////////////CONSTANTS//////////////////////////////
@@ -214,110 +216,19 @@ int main(int argc, char* argv[]) {
   }
 //need to save where the corresponding eigvec coefficients are for CI coeff and mp2 correction summing
 //=========================End VCIS============================
-/*  //read rmass for tests
-  std::ifstream in("rmass.dat",std::ios::in);
-  std::vector<double> mass; 
- if(!in) {
-    printf("Error: rmass.dat could not be opened\n");
-    exit(0);
-  }
-  double val = 0.0;
-  while(in >> val) {
-    mass.push_back(val*1822.8884848961380701);
-  }*/
+
 //======================VMP2 Corrections=======================
-  std::vector<double> mp2Corr(nModes);
-
-  //perturbation is total - effV
-  int maxState = 4;
-  int minState = 1;
-  int numStates = maxState-minState+1;
-
-  //Perturbation integrals 
-  int maxDim = 0;
-  for(int i=0 ; i<potDims.size() ; i++) {
-    if(potDims[i] > maxDim)
-      maxDim = potDims[i];
-  }  
-
-  std::vector<double> singles(nModes*nModes*numStates);
-  std::vector<double> singlesDenom(nModes*nModes*numStates);
-  std::vector<std::vector<double>> integrals;
-  std::vector<std::vector<double>> denominators;
-  for(int i=0 ; i<maxDim ; i++) {
-    int excitationLevel = i+2;
-    int size = nModes;
-    for(int j=0 ; j<excitationLevel ; j++) { //computes unique tuples 
-      size *= nModes-j; 
-      size /= j+1;
-    }
-    size *= pow(numStates,excitationLevel);
-    std::vector<double> integral(size);
-    std::vector<double> denominator(size);
-    integrals.push_back(integral);
-    denominators.push_back(denominator);
-  } 
+  Mp2Corr correlationCalc(dof,pot,potIterators);
+  std::vector<std::pair<std::vector<int>,std::vector<int>>> psi_m;
   for(int i=0 ; i<nModes ; i++) {
-    dof[i]->setBra(1);
-    for(int j=0 ; j<potIterators.size() ; j++) {
-    for(int j2=0 ; j2<potIterators[j].size() ; j2++) {
-
-      //Single Excitations 
-      for(int k=0 ; k<nModes ; k++) {
-        std::vector<int> diff1;
-        diff1.push_back(i);
-        diff1.push_back(k);
-        for(int l=minState ; l<=maxState ; l++) {
-          dof[k]->setKet(l);
-          if(l>1 && integralIsNonZero(diff1,potIterators[j][j2],dof)) { 
-            double integralVal = pot[j]->integrateTuple(j2,false);
-            int index = i*nModes*numStates+k*numStates+(l-minState);
-//            printf("Integral: %i %i State: %i, Tuple Num: %i Val: %.12f\n",i,k,l,j2,integralVal);   
-            singles[index] += integralVal;
-            if(singlesDenom[index] == 0.0)
-              singlesDenom[index] = excitedEnergies[i+1]-(excitedEnergies[0]+(dof[k]->getEModal()-dof[k]->getEModal(0)));
-          }
-
-          //Double+ Excitations
-          fillCorrectionMatrices(pot[j], minState, maxState, dof, 2, integrals, potIterators[j][j2], j2, k+1, diff1, denominators, excitedEnergies);
-          dof[k]->setKet(0);
-        }//l
-      }//k
-    }//j2
-    }//j
-    dof[i]->setBra(0);
-  }//i
-
-  //VMP2 Corrections square the integrals and include denominator
-
-  for(int i=0 ; i<nModes ; i++) {
-    int blockSize = singles.size()/nModes;
-    for(int j=0 ; j<blockSize ; j++) {
-      double temp = 0.0;
-      for(int k=0 ; k<nModes ; k++) {
-        temp += CI[i*nModes+k]*singles[k*blockSize+j];
-      }
-      if(temp != 0.0 && singlesDenom[i*blockSize+j] != 0.0)
-        mp2Corr[i] += temp*temp/singlesDenom[i*blockSize+j];
-    }
-    for(int j=0 ; j<integrals.size() ; j++) {
-      blockSize = integrals[j].size()/nModes;
-      for(int k=0 ; k<blockSize ; k++) {
-        double temp = 0.0;
-        for(int l=0 ; l<nModes ; l++) {
-          temp += CI[i*nModes+l]*integrals[j][l*blockSize+k];
-        }
-        if(temp != 0.0 && denominators[j][i*blockSize+k] != 0.0)
-          mp2Corr[i] += temp*temp/denominators[j][i*blockSize+k];
-      }
-    } 
+    std::vector<int> mode{i};
+    std::vector<int> state{1};
+    psi_m.push_back(std::make_pair(mode,state));
   }
-/*
-  double mode1 = 1/sqrt(2*mass[0]*dof[0]->getOmega());
-  double mode2 = 1/sqrt(2*mass[1]*dof[1]->getOmega());
-  printf("<10|21>: %.12f\n",mode1*mode2*sqrt(2));
-  printf("<01|12>: %.12f\n",mode1*mode2*sqrt(2));
-*/
+  correlationCalc.calculateIntegrals(psi_m,excitedEnergies);
+  std::vector<double> mp2Corr(nModes);
+  correlationCalc.getSecondOrderCorr(mp2Corr,CI);
+
 //===================End VMP2 Corrections======================
 
   //Print out all the transition frequencies
