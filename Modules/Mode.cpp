@@ -47,7 +47,7 @@ Mode::Mode(double _omega, int _nPoints, int _conv) {
     //DIIS Set-up
     conv = _conv;
     if(conv == 2) {
-      diis_subspace = 5;
+      diis_subspace = 4;
 //      Fsave.resize(diis_subspace);
 //      Dsave.resize(diis_subspace);
 //      Esave.resize(diis_subspace); 
@@ -111,12 +111,17 @@ void Mode::updateDensity() {
 //void Mode::extrapolateDensity(double *coeff) {
 void Mode::extrapolateDensity(double *coeff,int iter) {
   if(conv==2) { //coeff are the LC coefficients 
-    for(int i=0 ; i<nBasis*nBasis ; i++) density[i] = 0.0;
+    double *tempDensity = new double[nBasis*nBasis];
+    //for(int i=0 ; i<nBasis*nBasis ; i++) density[i] = 0.0;
     for(int i=0 ; i<Esave.size() ; i++) {
       for(int j=0 ; j<nBasis*nBasis ; j++) {
-        density[j] += coeff[i]*Dsave[i][j];
+        //density[j] += coeff[i]*Dsave[i][j];
+        tempDensity[j] += coeff[i]*Dsave[i][j];
       }
     }
+    saveCurrentDensity(iter);
+    delete[] density;
+    density = tempDensity;
     /*//Replace saved density
     double *Dcopy = new double[nBasis*nBasis];
     std::copy(density,density+(nBasis*nBasis),Dcopy);

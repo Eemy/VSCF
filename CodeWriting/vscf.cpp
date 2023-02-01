@@ -125,6 +125,8 @@ int main(int argc, char* argv[]) {
     double energy = 0.0;
     for(int i = 0 ; i< nModes ; i++) {
       printf("Mode %i\n",i);
+      if(iter==3)
+        printf("checkpoint\n");
       energy += solver.solveMode(dof[i],effV[i],0,iter);//iter instead of -1 allow DIIS to occur
     } 
 
@@ -138,7 +140,7 @@ int main(int argc, char* argv[]) {
     //CALL DIIS: solve for coefficients and obtain extrapolated density matrix
     if(conv==2) {
       solver.diis(dof,iter);
-      for(int i=0 ; i<dof.size() ; i++) dof[i]->saveCurrentDensity(iter);
+      //for(int i=0 ; i<dof.size() ; i++) dof[i]->saveCurrentDensity(iter);
     }
 
     //Check for Convergence
@@ -211,7 +213,7 @@ for(int z = 0 ; z< nModes ; z++) {
     //CALL DIIS: solve for coefficients and obtain extrapolated density matrix
     if(conv==2) {
       solver.diis(dof,iter);
-      for(int i=0 ; i<dof.size() ; i++) dof[i]->saveCurrentDensity(iter);
+      //for(int i=0 ; i<dof.size() ; i++) dof[i]->saveCurrentDensity(iter);
     }
 
     //Check for Convergence
@@ -331,6 +333,7 @@ bool checkConvergence(std::vector<Mode*> dof, double energy, int conv) {
       if(temp > diff)
         diff = temp;
     }
+    printf("Energy: %.12f\n",energy);
     return (diff < 1.0E-5) && (fabs(energy-prevEnergy)*219474.6313708 <0.5);
   }
   //DIIS

@@ -1,0 +1,2 @@
+plotState: plotState.cpp
+	icpc -std=c++11 -g ../CodeWriting/plotState.cpp ../UtilityFunc/ghQuad.cpp -o plotState 

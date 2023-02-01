@@ -102,12 +102,12 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
   printf("Iteration: %d\n",iter);  
   setMaxElement(E);
 */
-  //for(int a=0 ; a<dof.size() ; a++) {
+  for(int a=0 ; a<dof.size() ; a++) {
   int index = dof[0]->getNumErrorVecs();
   //int index = mode->getNumErrorVecs();
 
   //Extrapolate the Fock out of this thing -Justin
-  if(index>=4) { //why not iter>0?
+  if(index>=3) { //why not iter>0?
     //set up matrix [B11 B12 B13 ... -1.0]
     //              [B21 B22 B23 ... -1.0]
     //              [....................]
@@ -118,14 +118,16 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
     for(int i=0 ; i<index+1 ; i++) A[index*(index+1)+i] = -1.0;
     A[index*(index+1)+index] = 0.0;
 
-    for(int a=0 ; a<dof.size() ; a++) {
+   // for(int a=0 ; a<dof.size() ; a++) {
       for(int i=0 ; i<index ; i++) {
         for(int j=0 ; j<index ; j++) {
+          double printTemp = dof[a]->dotErrorVecs(i,j); 
+          printf("B %i, %i: mode %i, %-10.6e\n",i,j,a,printTemp);
           A[i*(index+1)+j] += dof[a]->dotErrorVecs(i,j);
 //          A[i*(index+1)+j] += mode->dotErrorVecs(i,j);
         }
       }
-    }
+    //}
     printmat(A,1,index+1,index+1,1.0);
      
     //solve for regression coeff
@@ -137,9 +139,8 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
     printmat(B,1,1,index+1,1.0);
 
     //use coefficients for new density matrix
-    for(int a=0 ; a<dof.size() ; a++) {
+    //for(int a=0 ; a<dof.size() ; a++)
       dof[a]->extrapolateDensity(B,iter);
-    }
 
 //    mode->extrapolateDensity(B);
     //for(int i=0 ; i<nBasis*nBasis ; i++) F[i] = 0.0;
@@ -150,6 +151,10 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
     //}
     delete[] A;
     delete[] B;
+  } 
+  else {
+    //for(int a=0; a<dof.size(); a++) 
+      dof[a]->saveCurrentDensity(iter);
   }
-  //}
+  }//for a, separate modes
 }

@@ -6,7 +6,7 @@ class Mode;
 class EigSolver {
     int nPoints;
     int nBasis;
-    int conv;
+//    int conv;
     double* T;
     void buildTmat();
   public:
@@ -17,6 +17,7 @@ class EigSolver {
 //    void diis(std::vector<Mode*>);
     void diis(std::vector<Mode*>,int);
 //    void diis(Mode*);
+    int conv;
 };
 
 #endif

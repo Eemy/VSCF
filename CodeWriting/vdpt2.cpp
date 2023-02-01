@@ -20,9 +20,6 @@
 #define au_to_wn 219474.6313708
 //////////////////////////////////////////////////////////////////////
 
-void fillCorrectionMatrices(Potential *pot, int minState, int maxState, std::vector<Mode*>& dof, int excitationLevel, std::vector<std::vector<double>>& integrals,  std::vector<int> tuple, int tupleIndex, int startIndex, std::vector<int> diff, std::vector<std::vector<double>>& denominators, std::vector<double>& excitedEnergies);
-int getIndex(std::vector<int> diff, int minState, int maxState, int excitationLevel, std::vector<Mode*> dof);
-bool integralIsNonZero(std::vector<int> diff, std::vector<int> tuple, std::vector<Mode*>& dof); 
 void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv);
 bool checkConvergence(std::vector<Mode*> dof, double energy, int conv);
 void print(FILE* script, std::string line);
@@ -153,7 +150,18 @@ int main(int argc, char* argv[]) {
 //    dof[i]->setHarmonic();
   }
 //===================VMP2 Corrections to GS====================
+  Mp2Corr correlationCalc(dof,pot,potIterators);
+  std::vector<std::pair<std::vector<int>,std::vector<int>>> psi_m;
 
+  std::vector<int> mode;
+  std::vector<int> state(nModes,0);
+  for(int i=0 ; i<nModes ; i++)
+    mode.push_back(i);
+  psi_m.push_back(std::make_pair(mode,state));//every mode at 0
+
+  correlationCalc.calculateIntegrals(psi_m,excitedEnergies);//excitedEnergies needs to change
+  std::vector<double> mp2Corr(nModes);
+  correlationCalc.getSecondOrderCorr(mp2Corr,CI);
 //====================End VMP2 Corrections=====================
 
 //==================VCIS for all excited states================
@@ -218,8 +226,8 @@ int main(int argc, char* argv[]) {
 //=========================End VCIS============================
 
 //======================VMP2 Corrections=======================
-  Mp2Corr correlationCalc(dof,pot,potIterators);
-  std::vector<std::pair<std::vector<int>,std::vector<int>>> psi_m;
+  correlationCalc.clear();
+  psi_m.clear();
   for(int i=0 ; i<nModes ; i++) {
     std::vector<int> mode{i};
     std::vector<int> state{1};
