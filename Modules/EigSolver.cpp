@@ -102,7 +102,7 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
   printf("Iteration: %d\n",iter);  
   setMaxElement(E);
 */
-  for(int a=0 ; a<dof.size() ; a++) {
+//  for(int a=0 ; a<dof.size() ; a++) {
   int index = dof[0]->getNumErrorVecs();
   //int index = mode->getNumErrorVecs();
 
@@ -118,7 +118,7 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
     for(int i=0 ; i<index+1 ; i++) A[index*(index+1)+i] = -1.0;
     A[index*(index+1)+index] = 0.0;
 
-   // for(int a=0 ; a<dof.size() ; a++) {
+    for(int a=0 ; a<dof.size() ; a++) {
       for(int i=0 ; i<index ; i++) {
         for(int j=0 ; j<index ; j++) {
           double printTemp = dof[a]->dotErrorVecs(i,j); 
@@ -127,7 +127,7 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
 //          A[i*(index+1)+j] += mode->dotErrorVecs(i,j);
         }
       }
-    //}
+    }
     printmat(A,1,index+1,index+1,1.0);
      
     //solve for regression coeff
@@ -139,7 +139,7 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
     printmat(B,1,1,index+1,1.0);
 
     //use coefficients for new density matrix
-    //for(int a=0 ; a<dof.size() ; a++)
+    for(int a=0 ; a<dof.size() ; a++)
       dof[a]->extrapolateDensity(B,iter);
 
 //    mode->extrapolateDensity(B);
@@ -153,8 +153,8 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
     delete[] B;
   } 
   else {
-    //for(int a=0; a<dof.size(); a++) 
+    for(int a=0; a<dof.size(); a++) 
       dof[a]->saveCurrentDensity(iter);
   }
-  }//for a, separate modes
+//  }//for a, separate modes
 }

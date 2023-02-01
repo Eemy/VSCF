@@ -209,7 +209,8 @@ for(int z = 0 ; z< nModes ; z++) {
         energy -= pot[i]->integrateTuple(j,true);
       }
     }
-
+    if(z==1)
+      printf("checkpoint\n");
     //CALL DIIS: solve for coefficients and obtain extrapolated density matrix
     if(conv==2) {
       solver.diis(dof,iter);
