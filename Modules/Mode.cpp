@@ -47,7 +47,7 @@ Mode::Mode(double _omega, int _nPoints, int _conv) {
     //DIIS Set-up
     conv = _conv;
     if(conv == 2) {
-      diis_subspace = 5;
+      diis_subspace = 4;
 //      Fsave.resize(diis_subspace);
 //      Dsave.resize(diis_subspace);
 //      Esave.resize(diis_subspace); 
@@ -119,7 +119,7 @@ void Mode::extrapolateDensity(double *coeff,int iter) {
         tempDensity[j] += coeff[i]*Dsave[i][j];
       }
     }
-    saveCurrentDensity(iter);
+    //saveCurrentDensity(iter);
     delete[] density;
     density = tempDensity;
     /*//Replace saved density
@@ -136,19 +136,19 @@ void Mode::extrapolateDensity(double *coeff,int iter) {
 }
 
 void Mode::saveCurrentDensity(int iter) {
-/*
+
   double *Dcopy = new double[nBasis*nBasis];
   std::copy(density,density+(nBasis*nBasis),Dcopy);
 
   if(iter==-1) {
     firstDensity = Dcopy; 
   } else {
-*/
+
     double *Dcopy = new double[nBasis*nBasis];
     std::copy(density,density+(nBasis*nBasis),Dcopy);
 
-    //int index = iter;
-    int index = iter+1;
+    int index = iter;
+    //int index = iter+1;
 
     if(index >=diis_subspace) { 
       delete[] Dsave[(index)%diis_subspace];
@@ -156,7 +156,7 @@ void Mode::saveCurrentDensity(int iter) {
     } else {
       Dsave.push_back(Dcopy);
     }
-//  }
+  }
 }
 
 //void Mode::saveErrorVec(double *F, int iter) {
@@ -176,20 +176,26 @@ void Mode::saveErrorVec(int iter) {
 
   double *error = new double[nBasis*nBasis];
 
-/*
+
   if(iter==0) {
     for(int i=0 ; i<nBasis*nBasis ; i++) 
       error[i] = density[i]-firstDensity[i];
   } else {
-*/
     for(int i=0 ; i<nBasis*nBasis ; i++) 
-      error[i] = density[i]-Dsave[iter%diis_subspace][i];
-
-//      error[i] = density[i]-Dsave[(iter-1)%diis_subspace][i];
-//  }
+//      error[i] = density[i]-Dsave[iter%diis_subspace][i];
+      error[i] = density[i]-Dsave[(iter-1)%diis_subspace][i];
+  }
 
   printf("Error Matrix\n");
   printmat(error,1,nBasis,nBasis,1.0);
+
+//step size metric
+  double rms = 0.0;
+  for(int i=0 ; i<nBasis*nBasis; i++) {
+    rms += sqrt(error[i]*error[i]);
+  }
+//
+
   setMaxElement(error);  
   if(iter >=diis_subspace) { 
     delete[] Esave[iter%diis_subspace];
@@ -199,8 +205,8 @@ void Mode::saveErrorVec(int iter) {
   }
 //  saveCurrentDensity(iter);
 ////debug
-  printf("EigVecs\n");
-  printmat(waveAll,1,nBasis,nBasis,1.0);
+//  printf("EigVecs\n");
+//  printmat(waveAll,1,nBasis,nBasis,1.0);
   printf("Density Matrix\n");
   printmat(density,1,nBasis,nBasis,1.0);
 //  printf("Fock Matrix\n");

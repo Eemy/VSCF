@@ -101,14 +101,16 @@ int main(int argc, char* argv[]) {
     fileName = "eemVSCF_gradDescent.dat";
   FILE *results = fopen(fileName.c_str(),"w");
 //===============================Begin VSCF==================================
+  printf("==========GS\n");
   //Prepare: eigensolver on pure 1D slices for each mode
   for(int i = 0 ; i< nModes ; i++) {
     prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);//-1 prevents DIIS
-    if(conv==2)
-      dof[i]->saveCurrentDensity(-1);
+  //  if(conv==2)
+  //    dof[i]->saveCurrentDensity(-1);
   }
   //Compute effective potential integrals
   for(int iter = 0 ; iter< maxIter ; iter++) {
+    printf("iter %i\n",iter);
     std::vector<std::vector<double>> effV = pot[0]->get1DSlices();
     for(int i=0 ; i<potIterators.size() ; i++) {
       for(int j=0 ; j<potIterators[i].size() ; j++) {
@@ -125,8 +127,6 @@ int main(int argc, char* argv[]) {
     double energy = 0.0;
     for(int i = 0 ; i< nModes ; i++) {
       printf("Mode %i\n",i);
-      if(iter==3)
-        printf("checkpoint\n");
       energy += solver.solveMode(dof[i],effV[i],0,iter);//iter instead of -1 allow DIIS to occur
     } 
 
@@ -165,6 +165,7 @@ int main(int argc, char* argv[]) {
   }
 /////////Excited-State VSCF//////////
 for(int z = 0 ; z< nModes ; z++) {
+  printf("==========ES%i\n",z);
   //Prepare 1D slices (effV guess)
   prevEnergy = 0.0;
   dof[z]->setBra(1); //excite mode
@@ -175,12 +176,13 @@ for(int z = 0 ; z< nModes ; z++) {
     } else {
       prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);
     }
-    if(conv==2)
-      dof[i]->saveCurrentDensity(-1);
+  //  if(conv==2)
+  //    dof[i]->saveCurrentDensity(-1);
   }
 
   //Compute effective potential integrals
   for(int iter = 0 ; iter< maxIter ; iter++) {
+    printf("iter %i\n",iter);
     std::vector<std::vector<double>> effV = pot[0]->get1DSlices();
     for(int i=0 ; i<potIterators.size() ; i++) {
       for(int j=0 ; j<potIterators[i].size() ; j++) {
@@ -196,6 +198,7 @@ for(int z = 0 ; z< nModes ; z++) {
     //Compute VSCF Energy
     double energy = 0.0;
     for(int i = 0 ; i< nModes ; i++) {
+      printf("Mode %i\n",i);
       if(i==z) {
         energy += solver.solveMode(dof[i],effV[i],1,iter);
       } else {
