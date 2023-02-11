@@ -150,6 +150,7 @@ int main(int argc, char* argv[]) {
 //    dof[i]->setHarmonic();
   }
 //===================VMP2 Corrections to GS====================
+/*
   Mp2Corr correlationCalc(dof,pot,potIterators);
   std::vector<std::pair<std::vector<int>,std::vector<int>>> psi_m;
 
@@ -162,6 +163,7 @@ int main(int argc, char* argv[]) {
   correlationCalc.calculateIntegrals(psi_m,excitedEnergies);//excitedEnergies needs to change
   std::vector<double> mp2Corr(nModes);
   correlationCalc.getSecondOrderCorr(mp2Corr,CI);
+*/
 //====================End VMP2 Corrections=====================
 
 //==================VCIS for all excited states================

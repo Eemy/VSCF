@@ -46,12 +46,12 @@ Mode::Mode(double _omega, int _nPoints, int _conv) {
 
     //DIIS Set-up
     conv = _conv;
-    if(conv == 2) {
+//    if(conv == 2) {
       diis_subspace = 4;
 //      Fsave.resize(diis_subspace);
 //      Dsave.resize(diis_subspace);
 //      Esave.resize(diis_subspace); 
-    }
+//    }
 }
 
 Mode::~Mode() {
@@ -186,14 +186,15 @@ void Mode::saveErrorVec(int iter) {
       error[i] = density[i]-Dsave[(iter-1)%diis_subspace][i];
   }
 
-  printf("Error Matrix\n");
-  printmat(error,1,nBasis,nBasis,1.0);
+//  printf("Error Matrix\n");
+//  printmat(error,1,nBasis,nBasis,1.0);
 
 //step size metric
   double rms = 0.0;
   for(int i=0 ; i<nBasis*nBasis; i++) {
     rms += sqrt(error[i]*error[i]);
   }
+  printf("RMS: %-10.6e\n",rms);
 //
 
   setMaxElement(error);  
@@ -207,8 +208,8 @@ void Mode::saveErrorVec(int iter) {
 ////debug
 //  printf("EigVecs\n");
 //  printmat(waveAll,1,nBasis,nBasis,1.0);
-  printf("Density Matrix\n");
-  printmat(density,1,nBasis,nBasis,1.0);
+//  printf("Density Matrix\n");
+//  printmat(density,1,nBasis,nBasis,1.0);
 //  printf("Fock Matrix\n");
 //  printmat(F,1,nBasis,nBasis,1.0);
 ////debug
@@ -259,6 +260,30 @@ double Mode::computeMaxDiff() {
   }
   return diff;
 }
+
+//metric
+void Mode::saveFinalDensity() {
+  double *Dcopy = new double[nBasis*nBasis];
+  std::copy(density,density+(nBasis*nBasis),Dcopy);
+
+  solutionDensity = Dcopy;
+}
+
+void Mode::resetSolution() {
+  delete[] solutionDensity;
+  solutionDensity = NULL;
+}
+
+void Mode::distFromSolution() {
+  if(solutionDensity != NULL) {
+    double diff = 0.0;
+    for(int i=0 ; i<nBasis*nBasis ; i++) {
+      diff += abs(density[i]-solutionDensity[i]);
+    }
+    printf("MAD: %-10.6e\n",diff);
+  }
+}
+//
 
 //============================GETTERS/SETTERS================================
 double Mode::getOverlapEG() {

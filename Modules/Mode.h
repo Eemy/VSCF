@@ -47,6 +47,11 @@ class Mode {
 //    void diis(double*,double*,int);
     double getDIISError();
     void updateDensity();
+//metric
+    void saveFinalDensity(); 
+    void resetSolution();
+    void distFromSolution();
+//
  private:
     void setMaxElement(double*);
 
@@ -78,6 +83,9 @@ class Mode {
     std::vector<double*> Esave; 
     double* density;
     double* firstDensity;
+//metric
+    double* solutionDensity = NULL;
+//
     int diis_subspace;
 };
 

@@ -77,13 +77,17 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
     mode->updateAllPsi_AllE(H,evals);
     if(!(conv==3 && iter>=0)) 
       mode->updateDensity();
-    
+
+//    //metric
+//    mode->distFromSolution();
+//    //     
+ 
     //Compute Error Vector
-    if(conv == 2) {
+    //if(conv == 2) {
       if(iter >= 0)
         mode->saveErrorVec(iter);
       mode->saveCurrentDensity(iter);
-    }
+    //}
 
 /*
     for(int i=0 ; i<nBasis ; i++) {
@@ -141,8 +145,12 @@ void EigSolver::diis(std::vector<Mode*> dof, int iter) {
     printmat(B,1,1,index+1,1.0);
 
     //use coefficients for new density matrix
-    for(int a=0 ; a<dof.size() ; a++)
+    for(int a=0 ; a<dof.size() ; a++) {
       dof[a]->extrapolateDensity(B,iter);
+     
+//      printf("Mode %i ",a); 
+//      dof[a]->distFromSolution();
+    }
 
     //for(int i=0 ; i<nBasis*nBasis ; i++) F[i] = 0.0;
     //for(int i=0 ; i<index ; i++) {

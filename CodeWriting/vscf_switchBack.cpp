@@ -23,7 +23,7 @@ double prevEnergy = 0.0;
 
 int main(int argc, char* argv[]) {
   const int defaultLength = 9;
-  int maxIter = 300;
+  int maxIter = 500;
 
   if(argc < defaultLength) { 
     printf("Error: <Nmodes> <Nquad> <1-Roothaan 2-Diis 3-GradDescent> <EnergyFile> <DipoleXFile> <DipoleYFile> <DipoleZFile> <CouplingDegree> [<EnergyFile> <Dx> <Dy> <Dz> <dim> ...]\n");
@@ -94,41 +94,59 @@ int main(int argc, char* argv[]) {
   //Open results file once all set-up is completed
   std::string fileName = "";
   if(conv==1)
-     fileName = "eemVSCF_roothaan.dat";
+     fileName = "eemVSCF_roothaan_solDist.dat";
   else if(conv==2)
-     fileName = "eemVSCF_diis_switch.dat";
+     fileName = "eemVSCF_diis_solDist.dat";
   else
     fileName = "eemVSCF_gradDescent.dat";
   FILE *results = fopen(fileName.c_str(),"w");
 //===============================Begin VSCF==================================
+//for(int convCounter=0 ; convCounter < 2 ; convCounter++) {
 //
-  int convCounter = 0;
+//  int convCounter = 0;
 //
 
   //Prepare: eigensolver on pure 1D slices for each mode
   for(int i = 0 ; i< nModes ; i++) {
     prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);//-1 prevents DIIS
-    if(conv==2)
-      dof[i]->saveCurrentDensity(-1);
+//    if(conv==2)
+//      dof[i]->saveCurrentDensity(-1);
   }
+
+for(int convCounter=0 ; convCounter < 2 ; convCounter++) {
+
+  printf("=========GS\n");
   //Compute effective potential integrals
   for(int iter = 0 ; iter< maxIter ; iter++) {
+    printf("iter %i\n",iter);    
+
     std::vector<std::vector<double>> effV = pot[0]->get1DSlices();
     for(int i=0 ; i<potIterators.size() ; i++) {
       for(int j=0 ; j<potIterators[i].size() ; j++) {
+
+        bool containsMode = false;
+        for(int j2=0 ; j2<potIterators[i][j].size() ; j2++) {
+          if(potIterators[i][j][j2] < 3) //0,1,2  
+            containsMode = true;
+        }
+        if(!containsMode) {
+
         for(int k=0 ; k<potIterators[i][j].size() ; k++) {
           for(int l=0 ; l<nPoints ; l++) {
             int modeIndex = potIterators[i][j][k];
             effV[modeIndex][l] += pot[i]->integralDriver(j,k,l);
           }
         }//k loop: mode indices for tuple
+
+        }//if
+
       }//j loop: tuples 
     }//i loop: potentials
 
     //Compute VSCF Energy
     double energy = 0.0;
     for(int i = 0 ; i< nModes ; i++) {
-      printf("Mode %i\n",i);
+//      printf("Mode %i ",i);
       energy += solver.solveMode(dof[i],effV[i],0,iter);//iter instead of -1 allow DIIS to occur
     } 
 
@@ -146,45 +164,51 @@ int main(int argc, char* argv[]) {
     }
 
     //Check for Convergence
-    if(checkConvergence(dof,energy,conv) && convCounter == 0) {
+    if(checkConvergence(dof,energy,conv)) {
       fprintf(results,"Converged at iteration %d\n",iter+1);
       fprintf(results,"Ground-State VSCF Energy is: %.8f\n", energy*219474.6313708);
       excitedEnergies[0] = energy;
-      convCounter++;
-      if(conv==2 && convCounter == 1) {
-        conv = 1;
-        solver.conv=1;
-        iter = 0;
-        prevEnergy = energy;
-      }
-/*      if(conv==1 && convCounter == 2) {
+//HELLO
+      if(convCounter == 0) {
+ //metric
+       for(int i=0 ; i<nModes ; i++) dof[i]->saveFinalDensity();
+//
+       conv = 1;
+       solver.conv = 1;
+      } else {
         conv = 2;
-        solver.conv=2;
-        break;
-      }*/
+        solver.conv = 2;
+        //look for discrepancy between roothaan and diis densities
+        for(int i=0 ; i<nModes ; i++) dof[i]->distFromSolution();
+      }
+
+      break;
     } else {
       prevEnergy = energy;
     }
     if(iter == maxIter-1) {
       print(results,"Ground-State VSCF failed to converge.\n");
       excitedEnergies[0] = energy;
-      //
-      conv = 2;
-      solver.conv = 2;
-      //
     }
   } 
+
 ///////End Ground-State VSCF/////////
   for(int i = 0 ; i< nModes ; i++) {
     dof[i]->setGroundState();
     if(conv==2)
       dof[i]->resetSubspace();
   }
+}//convCounter
+//metric
+  for(int i=0 ; i<nModes ; i++) dof[i]->resetSolution();
+//
 /////////Excited-State VSCF//////////
 for(int z = 0 ; z< nModes ; z++) {
 //
-  convCounter = 0;
+//  convCounter = 0;
 //
+//for(int convCounter = 0 ; convCounter<2 ; convCounter++) {
+
   //Prepare 1D slices (effV guess)
   prevEnergy = 0.0;
   dof[z]->setBra(1); //excite mode
@@ -195,28 +219,44 @@ for(int z = 0 ; z< nModes ; z++) {
     } else {
       prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);
     }
-    if(conv==2)
-      dof[i]->saveCurrentDensity(-1);
+//    if(conv==2)
+//      dof[i]->saveCurrentDensity(-1);
   }
 
+for(int convCounter = 0 ; convCounter<2 ; convCounter++) {
+
+  printf("=========ES%i\n",z);
   //Compute effective potential integrals
   for(int iter = 0 ; iter< maxIter ; iter++) {
+    printf("iter %i\n",iter);    
+
     std::vector<std::vector<double>> effV = pot[0]->get1DSlices();
     for(int i=0 ; i<potIterators.size() ; i++) {
       for(int j=0 ; j<potIterators[i].size() ; j++) {
+
+        bool containsMode = false;
+        for(int j2=0 ; j2<potIterators[i][j].size() ; j2++) {
+          if(potIterators[i][j][j2] < 3) //0,1,2  
+            containsMode = true;
+        }
+        if(!containsMode) {
+
         for(int k=0 ; k<potIterators[i][j].size() ; k++) {
           for(int l=0 ; l<nPoints ; l++) {
             int modeIndex = potIterators[i][j][k];
             effV[modeIndex][l] += pot[i]->integralDriver(j,k,l);
           }
         }//k loop: mode indices for tuple
+
+        }//if
+
       }//j loop: tuples 
     }//i loop: potentials
 
     //Compute VSCF Energy
     double energy = 0.0;
     for(int i = 0 ; i< nModes ; i++) {
-      printf("Mode %i\n",i);
+//      printf("Mode %i ",i);
       if(i==z) {
         energy += solver.solveMode(dof[i],effV[i],1,iter);
       } else {
@@ -238,32 +278,30 @@ for(int z = 0 ; z< nModes ; z++) {
     }
 
     //Check for Convergence
-    if(checkConvergence(dof,energy,conv) && convCounter == 0) {
+    if(checkConvergence(dof,energy,conv)) {
       fprintf(results,"Converged at iteration %d\n",iter+1);
       fprintf(results,"Mode %i Excited-State VSCF Energy is: %.8f\n",z,energy*219474.6313708);
       excitedEnergies[z+1] = energy;
-      convCounter++;
-      if(conv==2 && convCounter == 1) {
+//HELLO
+      if(convCounter == 0) {
+//metric
+        for(int i=0 ; i<nModes ; i++) dof[i]->saveFinalDensity();
+//
         conv = 1;
         solver.conv=1;
-        iter = 0;
-        prevEnergy = energy;
-      }
-/*      if(conv==1 && convCounter == 2) {
+      } else {
         conv = 2;
-        solver.conv=2;
-        break;
-      }*/
+        solver.conv = 2;
+        //look for discrepancy between roothaan and diis densities
+        for(int i=0 ; i<nModes ; i++) dof[i]->distFromSolution();
+      }
+      break;
     } else {
       prevEnergy = energy;
     }
     if(iter == maxIter-1) {
       fprintf(results,"Mode %i VSCF failed to converge.\n",z);
       excitedEnergies[z+1] = energy;
-      //
-      conv = 2;
-      solver.conv = 2;
-      //
     }
   }
   dof[z]->setExcitedState();
@@ -273,6 +311,11 @@ for(int z = 0 ; z< nModes ; z++) {
     for(int i=0 ; i<dof.size() ; i++)
       dof[i]->resetSubspace(); 
   }
+}//convCounter
+//metric
+  for(int i=0 ; i<nModes ; i++) dof[i]->resetSolution();
+//
+
 }//z loop: excited mode
 ////////End Excited-State VSCF///////
 
@@ -372,6 +415,7 @@ bool checkConvergence(std::vector<Mode*> dof, double energy, int conv) {
     printf("Energy: %.12f\n",energy);
     return (diff < 1.0E-5) && (fabs(energy-prevEnergy)*219474.6313708 <0.5);
   }
+
   //DIIS
   if(conv==2) {
     double max = 0.0;
@@ -379,10 +423,26 @@ bool checkConvergence(std::vector<Mode*> dof, double energy, int conv) {
       if(dof[i]->getDIISError() > max)
         max = dof[i]->getDIISError();
     }
+
+    //check convergence
+    double diff = 0.0;
+    for(int i=0 ; i<dof.size() ; i++) {
+      double temp = dof[i]->computeMaxDiff();
+      if(temp > diff)
+        diff = temp;
+    }
+
+    double diffE = fabs(energy-prevEnergy)*219474.6313708;
+    //
+  
     printf("ConvCheck: %.12f\n",max);
     printf("Energy: %.12f\n",energy);
-    return (max < 1.0e-14);
+//    printf("Wave Diff: %.12f\n",diff);
+//    printf("Energy Diff; %.12f\n",diffE);
+    return (max <1.0e-6);
+    //return (max < 1.0e-14);
   }
+
 }
 void print(FILE* script, std::string line) {
   fprintf(script,line.c_str());
