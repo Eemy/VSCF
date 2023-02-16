@@ -59,11 +59,11 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
     }
 //    printf("Fock Matrix\n"); 
 //    printmat(H,1,nBasis,nBasis,1.0);    
-/* 
+ 
     //Compute Error Vector
     if(iter >= 0 && conv == 2) 
       mode->saveErrorVec(H,iter);
-*/
+
 /*   
     //Update density by gradient 
     if(iter >= 0 && conv == 3)
@@ -84,11 +84,13 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
  
     //Compute Error Vector
     //if(conv == 2) {
-      if(iter >= 0)
-        mode->saveErrorVec(iter);
-      mode->saveCurrentDensity(iter);
+    //  if(iter >= 0)
+    //    mode->saveErrorVec(iter);
+    //  mode->saveCurrentDensity(iter);
     //}
 
+      if(iter >= 0)
+        mode->saveCurrentDensity(iter);
 /*
     for(int i=0 ; i<nBasis ; i++) {
       printf("EVALS: %.8f\n",evals[i]*219474.6313708);

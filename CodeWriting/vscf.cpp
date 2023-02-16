@@ -94,19 +94,22 @@ int main(int argc, char* argv[]) {
   //Open results file once all set-up is completed
   std::string fileName = "";
   if(conv==1)
-     fileName = "eemVSCF_roothaan_diisCriteria.dat";
+     fileName = "eemVSCF_roothaan_exclude.dat";
   else if(conv==2)
-     fileName = "eemVSCF_diis.dat";
+     fileName = "eemVSCF_diis_exclude.dat";
   else
     fileName = "eemVSCF_gradDescent.dat";
   FILE *results = fopen(fileName.c_str(),"w");
 //===============================Begin VSCF==================================
+//for(int banana=0 ; banana<25 ; banana++) {
   printf("==========GS\n");
   //Prepare: eigensolver on pure 1D slices for each mode
   for(int i = 0 ; i< nModes ; i++) {
     prevEnergy += solver.solveMode(dof[i],slices[i],0,-1);//-1 prevents DIIS
   //  if(conv==2)
   //    dof[i]->saveCurrentDensity(-1);
+  //  for(int j=0 ; j<nPoints ; j++) 
+  //    printf("effV , mode %i , iter -1: %.12f\n",i,slices[i][j]);
   }
   //Compute effective potential integrals
   for(int iter = 0 ; iter< maxIter ; iter++) {
@@ -115,12 +118,12 @@ int main(int argc, char* argv[]) {
     for(int i=0 ; i<potIterators.size() ; i++) {
       for(int j=0 ; j<potIterators[i].size() ; j++) {
 
-        bool containsMode = false;
+/*        bool containsMode = false;
         for(int j2=0 ; j2<potIterators[i][j].size() ; j2++) {
-          if(potIterators[i][j][j2] < 3) //0,1,2  
+          if(potIterators[i][j][j2] < 1) //0,1,2  
             containsMode = true;
         }
-        if(!containsMode) {
+        if(!containsMode) {*/
 
         for(int k=0 ; k<potIterators[i][j].size() ; k++) {
           for(int l=0 ; l<nPoints ; l++) {
@@ -129,7 +132,7 @@ int main(int argc, char* argv[]) {
           }
         }//k loop: mode indices for tuple
 
-        }//if
+//        }//if
 
       }//j loop: tuples 
     }//i loop: potentials
@@ -139,6 +142,9 @@ int main(int argc, char* argv[]) {
     for(int i = 0 ; i< nModes ; i++) {
       printf("Mode %i\n",i);
       energy += solver.solveMode(dof[i],effV[i],0,iter);//iter instead of -1 allow DIIS to occur
+
+      //for(int j=0 ; j<nPoints ; j++) 
+      //  printf("effV , mode %i , iter %i: %.12f\n",i,iter,slices[i][j]);
     } 
 
     //Apply VSCF Energy Correction
@@ -158,32 +164,6 @@ int main(int argc, char* argv[]) {
     if(checkConvergence(dof,energy,conv)) {
       fprintf(results,"Converged at iteration %d\n",iter+1);
       fprintf(results,"Ground-State VSCF Energy is: %.8f\n", energy*219474.6313708);
-/*
-//TEST compute energy one last time
-      energy = 0.0;      
-
-      //Apply VSCF Energy Correction
-      for(int i=0 ; i<pot.size() ; i++) {
-        for(int j=0 ; j<potIterators[i].size() ; j++) {
-          energy -= pot[i]->integrateTuple(j,true);
-        }
-      }
-      for(int i = 0 ; i< nModes ; i++) {
-        printf("Mode %i\n",i);
-        energy += solver.solveMode(dof[i],effV[i],0,-1);
-      } 
-
-      printf("Energy: %.12f\n",energy);
-
-      //Apply VSCF Energy Correction
-      for(int i=0 ; i<pot.size() ; i++) {
-        for(int j=0 ; j<potIterators[i].size() ; j++) {
-          energy -= pot[i]->integrateTuple(j,true);
-        }
-      }
-*/
-//TEST end
-
       excitedEnergies[0] = energy;
       break;
     } else {
@@ -200,6 +180,8 @@ int main(int argc, char* argv[]) {
 //    if(conv==2)
       dof[i]->resetSubspace();
   }
+//} //banana
+//exit(1);
 /////////Excited-State VSCF//////////
 for(int z = 0 ; z< nModes ; z++) {
   printf("==========ES%i\n",z);
@@ -216,21 +198,21 @@ for(int z = 0 ; z< nModes ; z++) {
   //  if(conv==2)
   //    dof[i]->saveCurrentDensity(-1);
   }
-
+//if(z==14) {
   //Compute effective potential integrals
   for(int iter = 0 ; iter< maxIter ; iter++) {
     printf("iter %i\n",iter);
     std::vector<std::vector<double>> effV = pot[0]->get1DSlices();
     for(int i=0 ; i<potIterators.size() ; i++) {
       for(int j=0 ; j<potIterators[i].size() ; j++) {
-
+/*
         bool containsMode = false;
         for(int j2=0 ; j2<potIterators[i][j].size() ; j2++) {
           if(potIterators[i][j][j2] < 3) //0,1,2  
             containsMode = true;
         }
         if(!containsMode) {
-
+*/
         for(int k=0 ; k<potIterators[i][j].size() ; k++) {
           for(int l=0 ; l<nPoints ; l++) {
             int modeIndex = potIterators[i][j][k];
@@ -238,7 +220,7 @@ for(int z = 0 ; z< nModes ; z++) {
           }
         }//k loop: mode indices for tuple
         
-        }//if
+//        }//if
 
       }//j loop: tuples 
     }//i loop: potentials
@@ -271,36 +253,6 @@ for(int z = 0 ; z< nModes ; z++) {
     if(checkConvergence(dof,energy,conv)) {
       fprintf(results,"Converged at iteration %d\n",iter+1);
       fprintf(results,"Mode %i Excited-State VSCF Energy is: %.8f\n",z,energy*219474.6313708);
-/*
-//TEST compute energy one last time
-      energy = 0.0; 
-      //Apply VSCF Energy Correction
-      for(int i=0 ; i<pot.size() ; i++) {
-        for(int j=0 ; j<potIterators[i].size() ; j++) {
-          energy -= pot[i]->integrateTuple(j,true);
-        }
-      }
-      //Compute VSCF Energy
-      for(int i = 0 ; i< nModes ; i++) {
-        printf("Mode %i\n",i);
-        if(i==z) {
-          energy += solver.solveMode(dof[i],effV[i],1,-1);
-        } else {
-          energy += solver.solveMode(dof[i],effV[i],0,-1);
-        }
-      }
-
-      printf("Energy: %.12f\n",energy);
-
-      //Apply VSCF Energy Correction
-      for(int i=0 ; i<pot.size() ; i++) {
-        for(int j=0 ; j<potIterators[i].size() ; j++) {
-          energy -= pot[i]->integrateTuple(j,true);
-        }
-      }
-*/
-//TEST end
-
       excitedEnergies[z+1] = energy;
       break;
     } else {
@@ -311,6 +263,7 @@ for(int z = 0 ; z< nModes ; z++) {
       excitedEnergies[z+1] = energy;
     }
   }
+//}//z==14
   dof[z]->setExcitedState();
   dof[z]->setBra(0);
   dof[z]->setKet(0);
@@ -406,7 +359,7 @@ void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoin
 } 
 
 bool checkConvergence(std::vector<Mode*> dof, double energy, int conv) {
-/*  //Roothaan
+  //Roothaan
   if(conv==1 || conv==3) {
     double diff = 0.0;
     for(int i=0 ; i<dof.size() ; i++) {
@@ -420,14 +373,15 @@ bool checkConvergence(std::vector<Mode*> dof, double energy, int conv) {
       if(dof[i]->getDIISError() > max)
         max = dof[i]->getDIISError();
     }
-    printf("ConvCheck: %.12f\n",max);
+    printf("ConvCheck: %.12f\n",diff);
+    printf("EDiff: %10.5ef\n",fabs(energy-prevEnergy)*219474.6313708);
 
     printf("Energy: %.12f\n",energy);
     return (diff < 1.0E-5) && (fabs(energy-prevEnergy)*219474.6313708 <0.5);
 //    return (diff < 1.0E-6) && (fabs(energy-prevEnergy)*219474.6313708 <0.4);
-  }*/
+  }
   //DIIS
-  if(conv==2 || conv == 1) {
+  if(conv==2) {
     double max = 0.0;
     for(int i=0 ; i<dof.size() ; i++) {
       if(dof[i]->getDIISError() > max)
@@ -436,7 +390,7 @@ bool checkConvergence(std::vector<Mode*> dof, double energy, int conv) {
     printf("ConvCheck: %.12f\n",max);
     printf("Energy: %.12f\n",energy);
 //    return (max < 1.0e-14);
-    return (max < 1.0e-6); 
+    return (max < 1.0e-8); 
   }
 }
 void print(FILE* script, std::string line) {

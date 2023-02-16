@@ -47,7 +47,7 @@ Mode::Mode(double _omega, int _nPoints, int _conv) {
     //DIIS Set-up
     conv = _conv;
 //    if(conv == 2) {
-      diis_subspace = 4;
+      diis_subspace = 6;
 //      Fsave.resize(diis_subspace);
 //      Dsave.resize(diis_subspace);
 //      Esave.resize(diis_subspace); 
@@ -159,12 +159,12 @@ void Mode::saveCurrentDensity(int iter) {
   }
 }
 
-//void Mode::saveErrorVec(double *F, int iter) {
-void Mode::saveErrorVec(int iter) {
+void Mode::saveErrorVec(double *F, int iter) {
+//void Mode::saveErrorVec(int iter) {
 /*  //Make copy of current Fock Matrix to save
   double *Fcopy = new double[nBasis*nBasis];
   std::copy(F,F+(nBasis*nBasis),Fcopy);*/
-/*
+
   //Compute Error Vector
   double *fd = new double[nBasis*nBasis];
   double *df = new double[nBasis*nBasis]; 
@@ -172,11 +172,9 @@ void Mode::saveErrorVec(int iter) {
   ABmult(fd,F,density,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
   ABmult(df,density,F,nBasis,nBasis,nBasis,nBasis,nBasis,nBasis,1);
   for(int i=0 ; i<nBasis*nBasis ; i++) error[i] = fd[i]-df[i]; 
-*/
 
+/*
   double *error = new double[nBasis*nBasis];
-
-
   if(iter==0) {
     for(int i=0 ; i<nBasis*nBasis ; i++) 
       error[i] = density[i]-firstDensity[i];
@@ -185,10 +183,10 @@ void Mode::saveErrorVec(int iter) {
 //      error[i] = density[i]-Dsave[iter%diis_subspace][i];
       error[i] = density[i]-Dsave[(iter-1)%diis_subspace][i];
   }
-
+*/
 //  printf("Error Matrix\n");
 //  printmat(error,1,nBasis,nBasis,1.0);
-
+/*
 //step size metric
   double rms = 0.0;
   for(int i=0 ; i<nBasis*nBasis; i++) {
@@ -196,7 +194,7 @@ void Mode::saveErrorVec(int iter) {
   }
   printf("RMS: %-10.6e\n",rms);
 //
-
+*/
   setMaxElement(error);  
   if(iter >=diis_subspace) { 
     delete[] Esave[iter%diis_subspace];
