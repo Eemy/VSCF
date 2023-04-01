@@ -93,6 +93,22 @@ void Mp2Corr::calculateIntegrals(vector<pair<vector<int>,vector<int>>>psi_m, vec
     }
   }//i
 
+  printf("Singles\n");
+  double *singlesVector = &singles[0];
+  printmat(singlesVector,numPsi,nModes,numStates,1.0);
+  printf("Doubles\n");
+  double *doublesVector2 = &integrals[0][0];
+  int nPairs = (nModes)*(nModes-1)/2;
+  printmat(doublesVector2,numPsi,nPairs,numStates*numStates,1.0);
+  printf("Triples\n");
+  double *triplesVector2 = &integrals[1][0];
+  int nTriples = (nModes)*(nModes-1)*(nModes-2)/6;
+  printmat(triplesVector2,numPsi,nTriples,numStates*numStates*numStates,1.0);
+  printf("Quadruples\n");
+  double *quadruplesVector2 = &integrals[2][0];
+  int nQuadruples = (nModes)*(nModes-1)*(nModes-2)*(nModes-3)/24;
+  printmat(quadruplesVector2,numPsi,nQuadruples,numStates*numStates*numStates*numStates,1.0);
+
 }
 
 void Mp2Corr::fillCorrectionMatrices(int excitationLevel, int psiIndex, int potIndex, int tupleIndex, int startIndex, vector<int> diff, vector<double>& excitedEnergies) {

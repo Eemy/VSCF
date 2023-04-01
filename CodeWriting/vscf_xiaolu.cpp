@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
   //Open results file once all set-up is completed
   FILE *results = fopen("eemVSCF_x.dat","w");
 //====================================Begin VSCF============================================
-for(int banana=0 ; banana<25 ; banana++) {
+//for(int banana=0 ; banana<25 ; banana++) {
   printf("==========GS\n");
   //Prepare: eigensolver on pure 1D slices for each mode
   for(int i = 0 ; i< nModes ; i++) {
@@ -110,14 +110,14 @@ for(int banana=0 ; banana<25 ; banana++) {
     std::vector<std::vector<double>> effV = pot[0]->get1DSlices();
     for(int i=0 ; i<potIterators.size() ; i++) {
       for(int j=0 ; j<potIterators[i].size() ; j++) {
-
+/*
         bool containsMode = false;
         for(int j2=0 ; j2<potIterators[i][j].size() ; j2++) {
-          if(potIterators[i][j][j2] < 1) //0,1,2  
+          if(potIterators[i][j][j2] < banana) //0,1,2  
             containsMode = true;
         }
         if(!containsMode) {
-
+*/
         for(int k=0 ; k<potIterators[i][j].size() ; k++) {
           for(int l=0 ; l<nPoints ; l++) {
             int modeIndex = potIterators[i][j][k];
@@ -126,7 +126,7 @@ for(int banana=0 ; banana<25 ; banana++) {
           }
         }//k loop: mode indices for tuple
 
-        }//if
+  //      }//if
 
       }//j loop: tuples 
     }//i loop: potentials
@@ -162,8 +162,8 @@ for(int banana=0 ; banana<25 ; banana++) {
   for(int i = 0 ; i< nModes ; i++) {
   dof[i]->setGroundState();
   }
-}//banana
-exit(1);
+//}//banana
+//exit(1);
 /////////Excited-State VSCF//////////
 for(int z = 0 ; z< nModes ; z++) {
   printf("==========ES%i\n",z);

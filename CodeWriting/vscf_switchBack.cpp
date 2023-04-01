@@ -15,18 +15,18 @@
 #define debye_to_ea0 0.393430307
 #define Na       6.02214179E23 
 //////////////////////////////////////////////////////////////////////
-void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv);
+void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv, int subspace);
 bool checkConvergence(std::vector<Mode*> dof, double energy, int conv);
 void print(FILE* script, std::string line);
 
 double prevEnergy = 0.0;
 
 int main(int argc, char* argv[]) {
-  const int defaultLength = 9;
+  const int defaultLength = 10;
   int maxIter = 500;
 
   if(argc < defaultLength) { 
-    printf("Error: <Nmodes> <Nquad> <1-Roothaan 2-Diis 3-GradDescent> <EnergyFile> <DipoleXFile> <DipoleYFile> <DipoleZFile> <CouplingDegree> [<EnergyFile> <Dx> <Dy> <Dz> <dim> ...]\n");
+    printf("Error: <Nmodes> <Nquad> <1-Roothaan 2-Diis 3-GradDescent> <Diis_subspace> <EnergyFile> <DipoleXFile> <DipoleYFile> <DipoleZFile> <CouplingDegree> [<EnergyFile> <Dx> <Dy> <Dz> <dim> ...]\n");
     exit(0);
   }
   if((argc-defaultLength)%5 != 0) {
@@ -40,19 +40,20 @@ int main(int argc, char* argv[]) {
   int conv = atoi(argv[3]);
   if(conv != 1 && conv != 2 && conv != 3) //default is roothaan for bad input
     conv = 1;
+  int diis_subspace = atoi(argv[4]);
   std::vector<std::string> potFileNames;
-  potFileNames.push_back(argv[4]); //arg4
+  potFileNames.push_back(argv[5]); //arg4
   std::vector<std::string> dipFileNames;
-  dipFileNames.push_back(argv[5]); //arg5
-  dipFileNames.push_back(argv[6]); //arg6
-  dipFileNames.push_back(argv[7]); //arg7
+  dipFileNames.push_back(argv[6]); //arg5
+  dipFileNames.push_back(argv[7]); //arg6
+  dipFileNames.push_back(argv[8]); //arg7
   std::vector<int> potDims;
-  potDims.push_back(atoi(argv[8])); //arg8
+  potDims.push_back(atoi(argv[9])); //arg8
 
 /////////////////Create Mode, EigSolver, Potential Objects///////////////////
   std::vector<Mode*> dof;
   std::vector<double> freq;
-  readin(dof,freq,nModes,nPoints, conv); 
+  readin(dof,freq,nModes,nPoints, conv, diis_subspace); 
   EigSolver solver(nPoints,conv);
 
   std::vector<Potential*> pot;
@@ -123,14 +124,14 @@ for(int convCounter=0 ; convCounter < 2 ; convCounter++) {
     std::vector<std::vector<double>> effV = pot[0]->get1DSlices();
     for(int i=0 ; i<potIterators.size() ; i++) {
       for(int j=0 ; j<potIterators[i].size() ; j++) {
-
+/*
         bool containsMode = false;
         for(int j2=0 ; j2<potIterators[i][j].size() ; j2++) {
           if(potIterators[i][j][j2] < 3) //0,1,2  
             containsMode = true;
         }
         if(!containsMode) {
-
+*/
         for(int k=0 ; k<potIterators[i][j].size() ; k++) {
           for(int l=0 ; l<nPoints ; l++) {
             int modeIndex = potIterators[i][j][k];
@@ -138,7 +139,7 @@ for(int convCounter=0 ; convCounter < 2 ; convCounter++) {
           }
         }//k loop: mode indices for tuple
 
-        }//if
+//        }//if
 
       }//j loop: tuples 
     }//i loop: potentials
@@ -171,15 +172,15 @@ for(int convCounter=0 ; convCounter < 2 ; convCounter++) {
 //HELLO
       if(convCounter == 0) {
  //metric
-       for(int i=0 ; i<nModes ; i++) dof[i]->saveFinalDensity();
-//
+ //      for(int i=0 ; i<nModes ; i++) dof[i]->saveFinalDensity();
+ //
        conv = 1;
        solver.conv = 1;
       } else {
         conv = 2;
         solver.conv = 2;
         //look for discrepancy between roothaan and diis densities
-        for(int i=0 ; i<nModes ; i++) dof[i]->distFromSolution();
+//        for(int i=0 ; i<nModes ; i++) dof[i]->distFromSolution();
       }
 
       break;
@@ -233,14 +234,14 @@ for(int convCounter = 0 ; convCounter<2 ; convCounter++) {
     std::vector<std::vector<double>> effV = pot[0]->get1DSlices();
     for(int i=0 ; i<potIterators.size() ; i++) {
       for(int j=0 ; j<potIterators[i].size() ; j++) {
-
+/*
         bool containsMode = false;
         for(int j2=0 ; j2<potIterators[i][j].size() ; j2++) {
           if(potIterators[i][j][j2] < 3) //0,1,2  
             containsMode = true;
         }
         if(!containsMode) {
-
+*/
         for(int k=0 ; k<potIterators[i][j].size() ; k++) {
           for(int l=0 ; l<nPoints ; l++) {
             int modeIndex = potIterators[i][j][k];
@@ -248,7 +249,7 @@ for(int convCounter = 0 ; convCounter<2 ; convCounter++) {
           }
         }//k loop: mode indices for tuple
 
-        }//if
+//        }//if
 
       }//j loop: tuples 
     }//i loop: potentials
@@ -285,7 +286,7 @@ for(int convCounter = 0 ; convCounter<2 ; convCounter++) {
 //HELLO
       if(convCounter == 0) {
 //metric
-        for(int i=0 ; i<nModes ; i++) dof[i]->saveFinalDensity();
+//        for(int i=0 ; i<nModes ; i++) dof[i]->saveFinalDensity();
 //
         conv = 1;
         solver.conv=1;
@@ -293,7 +294,7 @@ for(int convCounter = 0 ; convCounter<2 ; convCounter++) {
         conv = 2;
         solver.conv = 2;
         //look for discrepancy between roothaan and diis densities
-        for(int i=0 ; i<nModes ; i++) dof[i]->distFromSolution();
+//        for(int i=0 ; i<nModes ; i++) dof[i]->distFromSolution();
       }
       break;
     } else {
@@ -379,7 +380,7 @@ for(int i=0 ; i<nModes ; i++) {
 }
 
 //==========================HELPER METHODS=============================
-void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv) {
+void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv, int subspace) {
   //read in frequencies 
   std::ifstream in("freq.dat",std::ios::in);
   if(!in) {
@@ -399,7 +400,7 @@ void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoin
 
   //Create Mode objects and return
   for(int i=0 ; i<N ; i++) {
-    dof.push_back(new Mode(freq[i],nPoints,conv));
+    dof.push_back(new Mode(freq[i],nPoints,conv,subspace));
   }    
 } 
 

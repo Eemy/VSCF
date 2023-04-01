@@ -61,22 +61,17 @@ double EigSolver::solveMode(Mode* mode, std::vector<double> pot, int state, int 
 //    printmat(H,1,nBasis,nBasis,1.0);    
  
     //Compute Error Vector
-    if(iter >= 0 && conv == 2) 
-      mode->saveErrorVec(H,iter);
+//    if(iter >= 0 && conv == 2) 
+      if(iter >= 0)
+        mode->saveErrorVec(H,iter);
 
-/*   
-    //Update density by gradient 
-    if(iter >= 0 && conv == 3)
-      mode->extrapolateDensity(H);
-*/
     double* evals = new double[nBasis];
     diagonalize(H,evals,nBasis); //Hamiltonian becomes eigvec matrix
   
     //Update and Return Requested Information
     double evalNeeded = evals[state];
     mode->updateAllPsi_AllE(H,evals);
-    if(!(conv==3 && iter>=0)) 
-      mode->updateDensity();
+    mode->updateDensity();
 
 //    //metric
 //    mode->distFromSolution();

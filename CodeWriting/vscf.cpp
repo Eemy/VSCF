@@ -3,7 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <string>
+#include <cstring>
 #include <stdbool.h>
 #include "../Modules/Mode.h"
 #include "../Modules/Potential.h"
@@ -15,18 +15,18 @@
 #define debye_to_ea0 0.393430307
 #define Na       6.02214179E23 
 //////////////////////////////////////////////////////////////////////
-void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv);
+void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv, int subspace);
 bool checkConvergence(std::vector<Mode*> dof, double energy, int conv);
 void print(FILE* script, std::string line);
 
 double prevEnergy = 0.0;
 
 int main(int argc, char* argv[]) {
-  const int defaultLength = 9;
-  int maxIter = 500;
+  const int defaultLength = 10;
+  int maxIter = 2000;
 
   if(argc < defaultLength) { 
-    printf("Error: <Nmodes> <Nquad> <1-Roothaan 2-Diis 3-GradDescent> <EnergyFile> <DipoleXFile> <DipoleYFile> <DipoleZFile> <CouplingDegree> [<EnergyFile> <Dx> <Dy> <Dz> <dim> ...]\n");
+    printf("Error: <Nmodes> <Nquad> <1-Roothaan 2-Diis> <Diis_subspace> <EnergyFile> <DipoleXFile> <DipoleYFile> <DipoleZFile> <CouplingDegree> [<EnergyFile> <Dx> <Dy> <Dz> <dim> ...]\n");
     exit(0);
   }
   if((argc-defaultLength)%5 != 0) {
@@ -38,21 +38,22 @@ int main(int argc, char* argv[]) {
   int nModes = atoi(argv[1]); //arg1
   int nPoints = atoi(argv[2]); //arg2
   int conv = atoi(argv[3]);
-  if(conv != 1 && conv != 2 && conv != 3) //default is roothaan for bad input
-    conv = 1;
+  if(conv != 1 && conv != 2) //default is diis for bad input
+    conv = 2;
+  int diis_subspace = atoi(argv[4]);
   std::vector<std::string> potFileNames;
-  potFileNames.push_back(argv[4]); //arg4
+  potFileNames.push_back(argv[5]); //arg4
   std::vector<std::string> dipFileNames;
-  dipFileNames.push_back(argv[5]); //arg5
-  dipFileNames.push_back(argv[6]); //arg6
-  dipFileNames.push_back(argv[7]); //arg7
+  dipFileNames.push_back(argv[6]); //arg5
+  dipFileNames.push_back(argv[7]); //arg6
+  dipFileNames.push_back(argv[8]); //arg7
   std::vector<int> potDims;
-  potDims.push_back(atoi(argv[8])); //arg8
+  potDims.push_back(atoi(argv[9])); //arg8
 
 /////////////////Create Mode, EigSolver, Potential Objects///////////////////
   std::vector<Mode*> dof;
   std::vector<double> freq;
-  readin(dof,freq,nModes,nPoints, conv); 
+  readin(dof,freq,nModes,nPoints,conv,diis_subspace); 
   EigSolver solver(nPoints,conv);
 
   std::vector<Potential*> pot;
@@ -92,14 +93,13 @@ int main(int argc, char* argv[]) {
   std::vector<double> overlaps(nModes);
 
   //Open results file once all set-up is completed
-  std::string fileName = "";
-  if(conv==1)
-     fileName = "eemVSCF_roothaan_exclude.dat";
-  else if(conv==2)
-     fileName = "eemVSCF_diis_exclude.dat";
-  else
-    fileName = "eemVSCF_gradDescent.dat";
-  FILE *results = fopen(fileName.c_str(),"w");
+  char filename[1024];
+  if(conv==1) {
+     sprintf(filename,"eemVSCF_roothaan.dat");
+  } else if(conv==2) {
+    sprintf(filename,"eemVSCF_diis%i_GSguess2.dat",diis_subspace);     
+  }
+  FILE *results = fopen(filename,"w");
 //===============================Begin VSCF==================================
 //for(int banana=0 ; banana<25 ; banana++) {
   printf("==========GS\n");
@@ -120,11 +120,11 @@ int main(int argc, char* argv[]) {
 
 /*        bool containsMode = false;
         for(int j2=0 ; j2<potIterators[i][j].size() ; j2++) {
-          if(potIterators[i][j][j2] < 1) //0,1,2  
+          if(potIterators[i][j][j2] < banana) //0,1,2  
             containsMode = true;
         }
-        if(!containsMode) {*/
-
+        if(!containsMode) {
+*/
         for(int k=0 ; k<potIterators[i][j].size() ; k++) {
           for(int l=0 ; l<nPoints ; l++) {
             int modeIndex = potIterators[i][j][k];
@@ -189,7 +189,7 @@ for(int z = 0 ; z< nModes ; z++) {
   prevEnergy = 0.0;
   dof[z]->setBra(1); //excite mode
   dof[z]->setKet(1);
-  for(int i = 0 ; i< nModes ; i++) {
+/*  for(int i = 0 ; i< nModes ; i++) {
     if(i==z) {
       prevEnergy += solver.solveMode(dof[i],slices[i],1,-1);
     } else {
@@ -197,8 +197,7 @@ for(int z = 0 ; z< nModes ; z++) {
     }
   //  if(conv==2)
   //    dof[i]->saveCurrentDensity(-1);
-  }
-//if(z==14) {
+  }*/
   //Compute effective potential integrals
   for(int iter = 0 ; iter< maxIter ; iter++) {
     printf("iter %i\n",iter);
@@ -208,7 +207,7 @@ for(int z = 0 ; z< nModes ; z++) {
 /*
         bool containsMode = false;
         for(int j2=0 ; j2<potIterators[i][j].size() ; j2++) {
-          if(potIterators[i][j][j2] < 3) //0,1,2  
+          if(potIterators[i][j][j2] < banana) //0,1,2  
             containsMode = true;
         }
         if(!containsMode) {
@@ -263,7 +262,6 @@ for(int z = 0 ; z< nModes ; z++) {
       excitedEnergies[z+1] = energy;
     }
   }
-//}//z==14
   dof[z]->setExcitedState();
   dof[z]->setBra(0);
   dof[z]->setKet(0);
@@ -334,7 +332,7 @@ for(int i=0 ; i<nModes ; i++) {
 }
 
 //==========================HELPER METHODS=============================
-void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv) {
+void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv, int subspace) {
   //read in frequencies 
   std::ifstream in("freq.dat",std::ios::in);
   if(!in) {
@@ -354,7 +352,7 @@ void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoin
 
   //Create Mode objects and return
   for(int i=0 ; i<N ; i++) {
-    dof.push_back(new Mode(freq[i],nPoints,conv));
+    dof.push_back(new Mode(freq[i],nPoints,conv,subspace));
   }    
 } 
 
@@ -374,12 +372,13 @@ bool checkConvergence(std::vector<Mode*> dof, double energy, int conv) {
         max = dof[i]->getDIISError();
     }
     printf("ConvCheck: %.12f\n",diff);
-    printf("EDiff: %10.5ef\n",fabs(energy-prevEnergy)*219474.6313708);
+    printf("EDiff: %10.5f\n",fabs(energy-prevEnergy)*219474.6313708);
 
     printf("Energy: %.12f\n",energy);
     return (diff < 1.0E-5) && (fabs(energy-prevEnergy)*219474.6313708 <0.5);
 //    return (diff < 1.0E-6) && (fabs(energy-prevEnergy)*219474.6313708 <0.4);
   }
+
   //DIIS
   if(conv==2) {
     double max = 0.0;
@@ -393,6 +392,7 @@ bool checkConvergence(std::vector<Mode*> dof, double energy, int conv) {
     return (max < 1.0e-8); 
   }
 }
+
 void print(FILE* script, std::string line) {
   fprintf(script,line.c_str());
 }

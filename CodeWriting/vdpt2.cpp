@@ -20,18 +20,18 @@
 #define au_to_wn 219474.6313708
 //////////////////////////////////////////////////////////////////////
 
-void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv);
+void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv, int subspace);
 bool checkConvergence(std::vector<Mode*> dof, double energy, int conv);
 void print(FILE* script, std::string line);
 
 double prevEnergy = 0.0;
 
 int main(int argc, char* argv[]) {
-  const int defaultLength = 9;
+  const int defaultLength = 10;
   int maxIter = 500;
 
   if(argc < defaultLength) { 
-    printf("Error: <Nmodes> <Nquad> <1-Roothaan 2-Diis> <EnergyFile> <DipoleXFile> <DipoleYFile> <DipoleZFile> <CouplingDegree> [<EnergyFile> <Dx> <Dy> <Dz> <dim> ...]\n");
+    printf("Error: <Nmodes> <Nquad> <1-Roothaan 2-Diis> <Diis_subspace> <EnergyFile> <DipoleXFile> <DipoleYFile> <DipoleZFile> <CouplingDegree> [<EnergyFile> <Dx> <Dy> <Dz> <dim> ...]\n");
     exit(0);
   }
   if((argc-defaultLength)%5 != 0) {
@@ -45,19 +45,20 @@ int main(int argc, char* argv[]) {
   int conv = atoi(argv[3]);
   if(conv != 1 && conv != 2) //default is roothaan for bad input
     conv = 1;
+  int diis_subspace = atoi(argv[4]);
   std::vector<std::string> potFileNames;
-  potFileNames.push_back(argv[4]); //arg4
+  potFileNames.push_back(argv[5]); //arg4
   std::vector<std::string> dipFileNames;
-  dipFileNames.push_back(argv[5]); //arg5
-  dipFileNames.push_back(argv[6]); //arg6
-  dipFileNames.push_back(argv[7]); //arg7
+  dipFileNames.push_back(argv[6]); //arg5
+  dipFileNames.push_back(argv[7]); //arg6
+  dipFileNames.push_back(argv[8]); //arg7
   std::vector<int> potDims;
-  potDims.push_back(atoi(argv[8])); //arg8
+  potDims.push_back(atoi(argv[9])); //arg8
 
 /////////////////////////Create Mode, EigSolver, Potential Objects////////////////////////
   std::vector<Mode*> dof;
   std::vector<double> freq;
-  readin(dof,freq,nModes,nPoints, conv); 
+  readin(dof,freq,nModes,nPoints,conv,diis_subspace); 
   EigSolver solver(nPoints,conv);
 
   std::vector<Potential*> pot;
@@ -150,7 +151,7 @@ int main(int argc, char* argv[]) {
 //    dof[i]->setHarmonic();
   }
 //===================VMP2 Corrections to GS====================
-/*
+
   Mp2Corr correlationCalc(dof,pot,potIterators);
   std::vector<std::pair<std::vector<int>,std::vector<int>>> psi_m;
 
@@ -159,11 +160,13 @@ int main(int argc, char* argv[]) {
   for(int i=0 ; i<nModes ; i++)
     mode.push_back(i);
   psi_m.push_back(std::make_pair(mode,state));//every mode at 0
+  std::vector<double> energies;
+  energies.push_back(excitedEnergies[0]); //GS energy
+  energies.push_back(excitedEnergies[0]); //energy of state to be corrected (same state in this case)
+  correlationCalc.calculateIntegrals(psi_m,energies);
+  std::vector<double> mp2CorrGS(1);
+  correlationCalc.getSecondOrderCorr(mp2CorrGS);
 
-  correlationCalc.calculateIntegrals(psi_m,excitedEnergies);//excitedEnergies needs to change
-  std::vector<double> mp2Corr(nModes);
-  correlationCalc.getSecondOrderCorr(mp2Corr,CI);
-*/
 //====================End VMP2 Corrections=====================
 
 //==================VCIS for all excited states================
@@ -226,7 +229,18 @@ int main(int argc, char* argv[]) {
   }
 //need to save where the corresponding eigvec coefficients are for CI coeff and mp2 correction summing
 //=========================End VCIS============================
-
+/*  //read rmass for tests
+  std::ifstream in("rmass.dat",std::ios::in);
+  std::vector<double> mass; 
+ if(!in) {
+    printf("Error: rmass.dat could not be opened\n");
+    exit(0);
+  }
+  double val = 0.0;
+  while(in >> val) {
+    mass.push_back(val*1822.8884848961380701);
+  }
+*/
 //======================VMP2 Corrections=======================
   correlationCalc.clear();
   psi_m.clear();
@@ -238,7 +252,6 @@ int main(int argc, char* argv[]) {
   correlationCalc.calculateIntegrals(psi_m,excitedEnergies);
   std::vector<double> mp2Corr(nModes);
   correlationCalc.getSecondOrderCorr(mp2Corr,CI);
-
 //===================End VMP2 Corrections======================
 
   //Print out all the transition frequencies
@@ -251,7 +264,7 @@ int main(int argc, char* argv[]) {
   print(results,"  Harmonic        CIS(1)            Intensity(km/mol)\n");
   for(int i=0; i<nModes ; i++) {
 //  fprintf(results," % -15.4f % -15.4f % -15.4f \n", freq[i],(excitedEnergies[i+1]-excitedEnergies[0])*(au_to_wn),intensities[i]);
-    fprintf(results," % -15.4f % -15.4f % \n", freq[i],(excitedEnergies[i+1]-excitedEnergies[0]+mp2Corr[i])*(au_to_wn));
+    fprintf(results," % -15.4f % -15.4f % \n", freq[i],(excitedEnergies[i+1]-excitedEnergies[0]+mp2Corr[i]+mp2CorrGS[0])*(au_to_wn));
 //    fprintf(results," % -15.4f % -15.4f % \n", freq[i],(excitedEnergies[i+1]-excitedEnergies[0])*(au_to_wn));
 
   }
@@ -267,7 +280,7 @@ int main(int argc, char* argv[]) {
 }//end main
 
 //==========================HELPER METHODS=============================
-void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv) {
+void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoints, int conv, int subspace) {
   //read in frequencies 
   std::ifstream in("freq.dat",std::ios::in);
   if(!in) {
@@ -287,7 +300,7 @@ void readin(std::vector<Mode*>& dof, std::vector<double>& freq, int N, int nPoin
 
   //Create Mode objects and return
   for(int i=0 ; i<N ; i++) {
-    dof.push_back(new Mode(freq[i],nPoints,conv));
+    dof.push_back(new Mode(freq[i],nPoints,conv,subspace));
   }    
 } 
 

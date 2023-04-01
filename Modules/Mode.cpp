@@ -10,7 +10,7 @@ double pi =  3.1415926535897932384626433832795;
 double au_to_wn = 219474.6313708;
 double mass_au  = 1822.8884848961380701;
 
-Mode::Mode(double _omega, int _nPoints, int _conv) {
+Mode::Mode(double _omega, int _nPoints, int _conv, int _subspaceSize) {
     omega = _omega/au_to_wn;
     nPoints = _nPoints;
     nBasis = nPoints-1;
@@ -47,7 +47,7 @@ Mode::Mode(double _omega, int _nPoints, int _conv) {
     //DIIS Set-up
     conv = _conv;
 //    if(conv == 2) {
-      diis_subspace = 6;
+      diis_subspace = _subspaceSize;
 //      Fsave.resize(diis_subspace);
 //      Dsave.resize(diis_subspace);
 //      Esave.resize(diis_subspace); 
@@ -100,10 +100,12 @@ void Mode::updateAllPsi_AllE(double* newPsi, double* newE) {
 void Mode::updateDensity() {
   for(int i=0 ; i<nBasis ; i++) {
     for(int j=0 ; j<nBasis ; j++) {
-      if(vscfStates)
+      if(vscfStates) {
         density[i*nBasis+j] = vscfPsi[bra*nBasis+i]*vscfPsi[ket*nBasis+j];
-      else       
-        density[i*nBasis+j] = waveAll[bra*nBasis+i]*waveAll[ket*nBasis+j];
+      } else {       
+        if(waveAll != NULL)
+          density[i*nBasis+j] = waveAll[bra*nBasis+i]*waveAll[ket*nBasis+j];
+      }
     }
   }
 }
@@ -127,12 +129,7 @@ void Mode::extrapolateDensity(double *coeff,int iter) {
     std::copy(density,density+(nBasis*nBasis),Dcopy);
     delete [] Dsave[iter%diis_subspace];
     Dsave[iter%diis_subspace] = Dcopy;*/
-  } else if(conv ==3) { //coeff is the Fock Matrix
-    double learningFactor = 0.1;
-    for(int i=0 ; i<nBasis*nBasis ; i++) {
-      density[i] = density[i]+learningFactor*coeff[i];
-    }
-  }
+  } 
 }
 
 void Mode::saveCurrentDensity(int iter) {

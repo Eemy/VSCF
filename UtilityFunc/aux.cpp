@@ -129,6 +129,65 @@ void diagonalize(double* pEigvecs, double* pEigvals, int n){
 void linsolver(double* A, double* B, int N)
 {
 
+          //First, isolate Pulay B matrix:
+            double* subB = AllocDouble((N-1)*(N-1));
+            double* subBcopy = AllocDouble((N-1)*(N-1));
+            for(int i=0 ; i<N-1 ; i++) 
+              for(int j=0 ; j<N-1 ; j++) 
+                subB[i*(N-1)+j] = A[i*N+j];
+          printf("Original DIIS:\n");
+          for(int i=0 ; i<N ; i++) {
+            for(int j=0 ; j<N ; j++)
+              printf(" % -10.8e",A[i*N+j]);
+            printf("\n");
+          }
+          printf("subDIIS:\n");
+          for(int i=0 ; i<N-1 ; i++) {
+            for(int j=0 ; j<N-1 ; j++)
+              printf(" % -16.15e",subB[i*(N-1)+j]);
+            printf("\n");
+          }
+
+          //Then SVD
+          N--;
+
+            //rps added: normalize to Bii to avoid underflow
+            //  printf("rps debug: Normalizing DIIS equations.\n");
+            //  double Bii;
+            //  for(int i=0 ; i<N ; i++) {
+            //    Bii = subB[i*N+i];
+            //    if(fabs(Bii) > 1.0e-30) {     //avoid div by zero
+            //      for(int j=0 ; j<N ; j++) {
+            //        subB[i*N+j] /= Bii;
+            //      }
+            //    }
+            //  }
+
+            //  double fac = 0.02;
+            //  printf("rps debug: Damping DIIS equations fac = % -3.2f.\n",fac);
+            //  for(int i=0 ; i<N ; i++) 
+            //    subB[i*N+i] *= 1.0 + fac;
+            //end rps
+            
+          for(int i=0 ; i<N*N ; i++)
+            subBcopy[i] = subB[i];
+          char   jobu      = 'A'; //all vectors
+          char   jobvt     = 'A'; //all vectors
+          int    M         = N;
+          int    LDA2       = N;
+          double S[N];
+          double U[N*N];
+          double Vt[N*N];
+          int    LDU       = N;
+          int    LDVt      = N;
+          double Work2[5*N];
+          int    LWork     = 5*N;
+          int    info2;
+
+          dgesvd_(&jobu,&jobvt,&M,&N,subB,&LDA2,S,U,&LDU,Vt,&LDVt,Work2,&LWork,&info2);
+          printf("rps debug: SVD condition number: % -8.4e\n",S[0]/S[N-1]);
+        N++;        
+
         //returns solution in B.
         int i;
         int NRS = 1;
@@ -148,7 +207,7 @@ void linsolver(double* A, double* B, int N)
         int info;
 
         dgesvx_(&fact,&trans,&N,&NRS,A,&LDA,AF,&LDA,IPIV,&equed,&R,&C,B,&LDB,X,&LDB,&RCond,Ferr,Berr,Work,IWork,&info);
-        //printf("Rcond = % -10.16e \n",RCond); 
+        printf("Rcond = % -10.16e \n",RCond); 
         for(i=0; i<N; i++) B[i] = X[i];
 }
 

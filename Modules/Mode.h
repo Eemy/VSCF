@@ -5,7 +5,8 @@
 
 class Mode {
   public:
-    Mode(double, int, int);
+//    Mode(double, int, int);
+    Mode(double, int, int, int);
     ~Mode();
     void setGroundState(); 
     void setExcitedState();
