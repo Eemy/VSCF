@@ -70,7 +70,7 @@ void Mp2Corr::calculateIntegrals(vector<pair<vector<int>,vector<int>>>psi_m, vec
         diff1.push_back(k);
         for(int l=minState ; l<=maxState ; l++) {
           dof[k]->setKet(l);
-          if(l>1 && integralIsNonZero(diff1,tuples[j][j2])) { 
+          if(integralIsNonZero(diff1,tuples[j][j2]) && !brillouin()) { 
             double integralVal = pot[j]->integrateTuple(j2,false);
             int index = i*numPsi*numStates+k*numStates+(l-minState);//change for psi_m
             //printf("Integral: %i %i State: %i, Tuple Num: %i Val: %.12f\n",i,k,l,j2,integralVal);   
@@ -236,3 +236,13 @@ bool Mp2Corr::integralIsNonZero(vector<int> diff, vector<int> tuple) {
   return true;
 }
 
+//in cases of single excitations only, check if integral is 0. if a difference is only observed in a single mode, brillouin's theorem applies. (State is an eigenvector of the original state's Fock matrix)
+//This is not related to Brillouin's: but if numDiff == 0, then the state is the same as the original state of interest, which should not be included. 
+bool Mp2Corr::brillouin() {
+  int numDiff = 0;
+  for(int i=0 ; i<dof.size() ; i++) {
+    if(dof[i]->getBra() != dof[i]->getKet())
+      numDiff++; 
+  } 
+  return (numDiff == 1 || numDiff == 0);
+}

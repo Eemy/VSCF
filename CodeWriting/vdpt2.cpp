@@ -166,7 +166,9 @@ int main(int argc, char* argv[]) {
   correlationCalc.calculateIntegrals(psi_m,energies);
   std::vector<double> mp2CorrGS(1);
   correlationCalc.getSecondOrderCorr(mp2CorrGS);
-
+  
+  printf("MP2 correction is (a.u) %15.12f\n",mp2CorrGS[0]);
+  printf("MP2 correction is (a.u) %15.4f\n",mp2CorrGS[0]*au_to_wn);
 //====================End VMP2 Corrections=====================
 
 //==================VCIS for all excited states================
@@ -252,6 +254,11 @@ int main(int argc, char* argv[]) {
   correlationCalc.calculateIntegrals(psi_m,excitedEnergies);
   std::vector<double> mp2Corr(nModes);
   correlationCalc.getSecondOrderCorr(mp2Corr,CI);
+
+  printf("MP2 correction is (a.u) %15.12f\n",mp2Corr[0]);
+  printf("MP2 correction is (a.u) %15.4f\n",mp2Corr[0]*au_to_wn);
+  printf("MP2 correction is (a.u) %15.12f\n",mp2Corr[1]);
+  printf("MP2 correction is (a.u) %15.4f\n",mp2Corr[1]*au_to_wn);
 //===================End VMP2 Corrections======================
 
   //Print out all the transition frequencies

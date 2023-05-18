@@ -36,6 +36,7 @@ class Mp2Corr {
     void fillCorrectionMatrices(int,int,int,int,int,vector<int>,vector<double>&);
     int getIndex(vector<int>,int,int);
     bool integralIsNonZero(vector<int>,vector<int>); 
+    bool brillouin();
 };
 
 #endif
